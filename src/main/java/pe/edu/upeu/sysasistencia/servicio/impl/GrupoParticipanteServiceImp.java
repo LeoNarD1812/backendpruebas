@@ -43,43 +43,71 @@ public class GrupoParticipanteServiceImp extends CrudGenericoServiceImp<GrupoPar
 
     @Override
     public GrupoParticipante agregarParticipante(Long grupoPequenoId, Long personaId) {
-        // Validar que el grupo existe
-        GrupoPequeno grupo = grupoPequenoRepo.findById(grupoPequenoId)
-                .orElseThrow(() -> new ModelNotFoundException("Grupo pequeño no encontrado"));
+        log.info("🔍 Iniciando proceso de agregar participante: Grupo={}, Persona={}",
+                grupoPequenoId, personaId);
 
-        // Validar capacidad
+        // 1. Validar que el grupo existe
+        GrupoPequeno grupo = grupoPequenoRepo.findById(grupoPequenoId)
+                .orElseThrow(() -> {
+                    log.error("❌ Grupo pequeño no encontrado: {}", grupoPequenoId);
+                    return new ModelNotFoundException("Grupo pequeño no encontrado");
+                });
+
+        log.info("✅ Grupo encontrado: {} (Evento: {})",
+                grupo.getNombre(),
+                grupo.getGrupoGeneral().getEventoGeneral().getNombre());
+
+        // 2. Validar que la persona existe
+        Persona persona = personaService.findById(personaId);
+        log.info("✅ Persona encontrada: {}", persona.getNombreCompleto());
+
+        // 3. Obtener ID del evento general
+        Long eventoGeneralId = grupo.getGrupoGeneral().getEventoGeneral().getIdEventoGeneral();
+        log.info("📋 Evento General ID: {}", eventoGeneralId);
+
+        // 4. ✅ VALIDACIÓN CORRECTA: Verificar si ya está inscrito en CUALQUIER grupo del evento
+        boolean yaInscritoEnEvento = repo.existeEnEvento(personaId, eventoGeneralId);
+        if (yaInscritoEnEvento) {
+            log.error("❌ La persona {} ya está inscrita en otro grupo del evento {}",
+                    personaId, eventoGeneralId);
+            throw new RuntimeException("La persona ya está inscrita en un grupo de este evento");
+        }
+        log.info("✅ La persona NO está inscrita en ningún grupo del evento");
+
+        // 5. Validar capacidad del grupo
         Integer participantesActuales = grupoPequenoRepo.countParticipantesActivos(grupoPequenoId);
+        log.info("📊 Capacidad: {}/{}", participantesActuales, grupo.getCapacidadMaxima());
+
         if (participantesActuales >= grupo.getCapacidadMaxima()) {
+            log.error("❌ El grupo ha alcanzado su capacidad máxima: {}/{}",
+                    participantesActuales, grupo.getCapacidadMaxima());
             throw new RuntimeException("El grupo ha alcanzado su capacidad máxima");
         }
+        log.info("✅ El grupo tiene espacio disponible");
 
-        // Validar que la persona existe
-        Persona persona = personaService.findById(personaId);
-
-        // Validar que no esté ya inscrito
-        var existente = repo.findByGrupoPequenoIdGrupoPequenoAndPersonaIdPersona(
-                grupoPequenoId, personaId
-        );
-        if (existente.isPresent()) {
-            throw new RuntimeException("La persona ya está inscrita en este grupo");
-        }
-
-        // Crear participante
+        // 6. Crear participante
         GrupoParticipante participante = GrupoParticipante.builder()
                 .grupoPequeno(grupo)
                 .persona(persona)
                 .estado(GrupoParticipante.EstadoParticipante.ACTIVO)
                 .build();
 
-        log.info("Participante {} agregado al grupo {}", personaId, grupoPequenoId);
-        return repo.save(participante);
+        GrupoParticipante guardado = repo.save(participante);
+
+        log.info("✅ Participante agregado exitosamente: {} al grupo {}",
+                persona.getNombreCompleto(), grupo.getNombre());
+
+        return guardado;
     }
 
     @Override
     public void removerParticipante(Long grupoParticipanteId) {
+        log.info("🗑️ Removiendo participante: {}", grupoParticipanteId);
+
         GrupoParticipante participante = findById(grupoParticipanteId);
         participante.setEstado(GrupoParticipante.EstadoParticipante.INACTIVO);
         repo.save(participante);
-        log.info("Participante {} removido del grupo", grupoParticipanteId);
+
+        log.info("✅ Participante removido del grupo: {}", participante.getGrupoPequeno().getNombre());
     }
 }

@@ -5,9 +5,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.edu.upeu.sysasistencia.dtos.ParticipanteDisponibleDTO;
+import pe.edu.upeu.sysasistencia.modelo.EventoGeneral;
 import pe.edu.upeu.sysasistencia.modelo.GrupoPequeno;
 import pe.edu.upeu.sysasistencia.modelo.Matricula;
-import pe.edu.upeu.sysasistencia.modelo.TipoPersona;
 import pe.edu.upeu.sysasistencia.repositorio.ICrudGenericoRepository;
 import pe.edu.upeu.sysasistencia.repositorio.IGrupoPequenoRepository;
 import pe.edu.upeu.sysasistencia.repositorio.IGrupoParticipanteRepository;
@@ -46,19 +46,31 @@ public class GrupoPequenoServiceImp extends CrudGenericoServiceImp<GrupoPequeno,
 
     @Override
     public List<ParticipanteDisponibleDTO> getParticipantesDisponibles(Long eventoGeneralId) {
-        // Obtener el evento para filtrar por programa
-        var evento = eventoService.findById(eventoGeneralId);
+        log.info("🔍 Buscando participantes disponibles para evento: {}", eventoGeneralId);
 
-        // Obtener matriculados del programa del evento - CORREGIDO: 5 parámetros
+        // 1. Obtener el evento para conocer programa y periodo
+        EventoGeneral evento = eventoService.findById(eventoGeneralId);
+        log.info("📋 Evento: {} - Programa: {} - Periodo: {}",
+                evento.getNombre(),
+                evento.getPrograma().getNombre(),
+                evento.getPeriodo().getNombre());
+
+        // 2. ✅ CORRECCIÓN: Obtener matriculados filtrando por programa Y periodo del evento
         List<Matricula> matriculas = matriculaRepo.findByFiltros(
-                null,                                   // sedeId
-                null,                                   // facultadId
-                evento.getPrograma().getIdPrograma(),   // programaId
-                null,                                   // periodoId
-                null                  // tipoPersona - ✅ NUEVO PARÁMETRO
+                null,                                    // sedeId
+                null,                                    // facultadId
+                evento.getPrograma().getIdPrograma(),    // programaId - ✅ CRÍTICO
+                evento.getPeriodo().getIdPeriodo(),      // periodoId - ✅ NUEVO Y CRÍTICO
+                null                                     // tipoPersona
         );
 
-        return matriculas.stream().map(m -> {
+        log.info("📊 Total matriculados en el programa {} del periodo {}: {}",
+                evento.getPrograma().getNombre(),
+                evento.getPeriodo().getNombre(),
+                matriculas.size());
+
+        // 3. Mapear a DTO y verificar inscripción
+        List<ParticipanteDisponibleDTO> disponibles = matriculas.stream().map(m -> {
             ParticipanteDisponibleDTO dto = new ParticipanteDisponibleDTO();
             dto.setPersonaId(m.getPersona().getIdPersona());
             dto.setNombreCompleto(m.getPersona().getNombreCompleto());
@@ -68,11 +80,21 @@ public class GrupoPequenoServiceImp extends CrudGenericoServiceImp<GrupoPequeno,
 
             // Verificar si ya está inscrito en algún grupo del evento
             boolean inscrito = participanteRepo.existeEnEvento(
-                    m.getPersona().getIdPersona(), eventoGeneralId
+                    m.getPersona().getIdPersona(),
+                    eventoGeneralId
             );
             dto.setYaInscrito(inscrito);
 
+            if (inscrito) {
+                log.debug("⚠️ {} ya está inscrito en el evento", m.getPersona().getNombreCompleto());
+            }
+
             return dto;
         }).collect(Collectors.toList());
+
+        long disponiblesCount = disponibles.stream().filter(d -> !d.getYaInscrito()).count();
+        log.info("✅ Participantes disponibles: {} de {}", disponiblesCount, disponibles.size());
+
+        return disponibles;
     }
 }
