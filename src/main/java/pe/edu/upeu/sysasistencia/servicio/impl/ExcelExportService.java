@@ -66,6 +66,7 @@ public class ExcelExportService {
     private void crearEncabezado(Sheet sheet, CellStyle headerStyle) {
         Row headerRow = sheet.createRow(0);
 
+        // ✅ SIN PERIODO
         String[] columnas = {
                 "Modo contrato",
                 "Modalidad estudio",
@@ -130,7 +131,7 @@ public class ExcelExportService {
         // Código estudiante
         createCell(row, colNum++, m.getPersona() != null ? m.getPersona().getCodigoEstudiante() : "", textStyle);
 
-        // Estudiante (nombre completo)
+        // Estudiante (Nombre completo)
         createCell(row, colNum++, m.getPersona() != null ? m.getPersona().getNombreCompleto() : "", textStyle);
 
         // Documento
@@ -140,8 +141,11 @@ public class ExcelExportService {
         createCell(row, colNum++, m.getPersona() != null ? m.getPersona().getCorreo() : "", textStyle);
 
         // Usuario
-        createCell(row, colNum++, m.getPersona() != null && m.getPersona().getUsuario() != null ?
-                m.getPersona().getUsuario().getUser() : "", textStyle);
+        String usuario = "";
+        if (m.getPersona() != null && m.getPersona().getUsuario() != null) {
+            usuario = m.getPersona().getUsuario().getUser();
+        }
+        createCell(row, colNum++, usuario, textStyle);
 
         // Correo Institucional
         createCell(row, colNum++, m.getPersona() != null ? m.getPersona().getCorreoInstitucional() : "", textStyle);
@@ -149,7 +153,7 @@ public class ExcelExportService {
         // Celular
         createCell(row, colNum++, m.getPersona() != null ? m.getPersona().getCelular() : "", textStyle);
 
-        // País
+        // Pais
         createCell(row, colNum++, m.getPersona() != null ? m.getPersona().getPais() : "", textStyle);
 
         // Foto
@@ -158,20 +162,18 @@ public class ExcelExportService {
         // Religión
         createCell(row, colNum++, m.getPersona() != null ? m.getPersona().getReligion() : "", textStyle);
 
-        // Fecha de nacimiento (solo fecha)
+        // Fecha de nacimiento
         if (m.getPersona() != null && m.getPersona().getFechaNacimiento() != null) {
-            Cell cell = row.createCell(colNum++);
-            cell.setCellValue(m.getPersona().getFechaNacimiento().format(DATE_FORMATTER));
-            cell.setCellStyle(dateStyle);
+            String fechaNac = m.getPersona().getFechaNacimiento().format(DATE_FORMATTER);
+            createCell(row, colNum++, fechaNac, dateStyle);
         } else {
             createCell(row, colNum++, "", textStyle);
         }
 
-        // Fecha de matrícula (con hora)
+        // Fecha de matrícula
         if (m.getFechaMatricula() != null) {
-            Cell cell = row.createCell(colNum++);
-            cell.setCellValue(m.getFechaMatricula().format(DATETIME_FORMATTER));
-            cell.setCellStyle(dateTimeStyle);
+            String fechaMat = m.getFechaMatricula().format(DATETIME_FORMATTER);
+            createCell(row, colNum++, fechaMat, dateTimeStyle);
         } else {
             createCell(row, colNum++, "", textStyle);
         }

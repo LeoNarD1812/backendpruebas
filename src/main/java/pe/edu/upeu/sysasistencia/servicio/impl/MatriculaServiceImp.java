@@ -41,7 +41,7 @@ public class MatriculaServiceImp extends CrudGenericoServiceImp<Matricula, Long>
     private final ISedeService sedeService;
     private final IFacultadService facultadService;
     private final IProgramaEstudioService programaService;
-    private final IPeriodoService periodoService; // ✅ NUEVO
+    private final IPeriodoService periodoService;
     private final IUsuarioRepository usuarioRepository;
     private final IRolService rolService;
     private final IUsuarioRolService usuarioRolService;
@@ -72,7 +72,6 @@ public class MatriculaServiceImp extends CrudGenericoServiceImp<Matricula, Long>
         return repo.findByCodigoEstudiante(codigo);
     }
 
-    // ✅ ACTUALIZADO: Con periodoId
     @Override
     public List<Matricula> findByFiltros(
             Long sedeId,
@@ -92,6 +91,13 @@ public class MatriculaServiceImp extends CrudGenericoServiceImp<Matricula, Long>
         result.setExitosos(0);
         result.setFallidos(0);
 
+        // ✅ VALIDAR QUE EL FILTRO DE PERIODO SEA OBLIGATORIO
+        if (filtros.getPeriodoId() == null) {
+            throw new Exception("Debe seleccionar un periodo para la importación");
+        }
+
+        Periodo periodoSeleccionado = periodoService.findById(filtros.getPeriodoId());
+
         TipoPersona tipoPersona = filtros.esEstudiante() ? TipoPersona.ESTUDIANTE : TipoPersona.INVITADO;
         if (filtros.getTipoPersona() != null) {
             tipoPersona = filtros.getTipoPersona();
@@ -109,16 +115,16 @@ public class MatriculaServiceImp extends CrudGenericoServiceImp<Matricula, Long>
             int totalRows = sheet.getPhysicalNumberOfRows();
             result.setTotalRegistros(totalRows - 1);
 
-            log.info("Iniciando importación con filtros: Sede={}, Facultad={}, Programa={}, Periodo={}, TipoPersona={}",
-                    filtros.getSedeId(), filtros.getFacultadId(), filtros.getProgramaId(),
-                    filtros.getPeriodoId(), tipoPersona);
+            log.info("Iniciando importación con periodo seleccionado: {}", periodoSeleccionado.getNombre());
+            log.info("Filtros: Sede={}, Facultad={}, Programa={}, TipoPersona={}",
+                    filtros.getSedeId(), filtros.getFacultadId(), filtros.getProgramaId(), tipoPersona);
 
             for (int i = 1; i < totalRows; i++) {
                 Row row = sheet.getRow(i);
                 if (row == null) continue;
 
                 try {
-                    procesarFila(row, i + 1, filtros, tipoPersona, result);
+                    procesarFila(row, i + 1, filtros, tipoPersona, periodoSeleccionado, result);
                 } catch (Exception e) {
                     result.setFallidos(result.getFallidos() + 1);
                     result.getErrores().add("Fila " + (i + 1) + ": " + e.getMessage());
@@ -137,44 +143,44 @@ public class MatriculaServiceImp extends CrudGenericoServiceImp<Matricula, Long>
     }
 
     private void procesarFila(Row row, int rowNum, ImportFilterDTO filtros,
-                              TipoPersona tipoPersona, ImportResultDTO result) throws Exception {
+                              TipoPersona tipoPersona, Periodo periodoSeleccionado,
+                              ImportResultDTO result) throws Exception {
         try {
-            // Leer datos del Excel
+            // ✅ Leer datos del Excel (SIN leer periodo de la columna)
             String modoContrato = getCellValueAsString(row.getCell(0));
             String modalidadEstudio = getCellValueAsString(row.getCell(1));
             String sedeNombre = getCellValueAsString(row.getCell(2));
             String facultadNombre = getCellValueAsString(row.getCell(3));
             String programaNombre = getCellValueAsString(row.getCell(4));
-            String periodoNombre = getCellValueAsString(row.getCell(5)); // ✅ NUEVO
-            String ciclo = getCellValueAsString(row.getCell(6));
-            String grupo = getCellValueAsString(row.getCell(7));
-            String idPersonaStr = getCellValueAsString(row.getCell(8));
-            String codigoEstudiante = getCellValueAsString(row.getCell(9));
-            String nombreCompleto = getCellValueAsString(row.getCell(10));
-            String documento = getCellValueAsString(row.getCell(11));
+            // ❌ ELIMINADO: periodo de columna 5
+            String ciclo = getCellValueAsString(row.getCell(5)); // Ahora ciclo está en columna 5
+            String grupo = getCellValueAsString(row.getCell(6));
+            String idPersonaStr = getCellValueAsString(row.getCell(7));
+            String codigoEstudiante = getCellValueAsString(row.getCell(8));
+            String nombreCompleto = getCellValueAsString(row.getCell(9));
+            String documento = getCellValueAsString(row.getCell(10));
 
-            String correo = getCellValueAsString(row.getCell(12));
+            String correo = getCellValueAsString(row.getCell(11));
             if (correo != null) correo = correo.trim();
 
-            String usuario = getCellValueAsString(row.getCell(13));
+            String usuario = getCellValueAsString(row.getCell(12));
             if (usuario != null) usuario = usuario.trim();
 
-            String correoInstitucional = getCellValueAsString(row.getCell(14));
+            String correoInstitucional = getCellValueAsString(row.getCell(13));
             if (correoInstitucional != null) correoInstitucional = correoInstitucional.trim();
 
-            String celular = getCellValueAsString(row.getCell(15));
-            String pais = getCellValueAsString(row.getCell(16));
-            String foto = getCellValueAsString(row.getCell(17));
-            String religion = getCellValueAsString(row.getCell(18));
-            LocalDate fechaNacimiento = parseFechaNacimiento(row.getCell(19));
-            LocalDateTime fechaMatriculaConHora = parseFechaMatriculaConHora(row.getCell(20));
+            String celular = getCellValueAsString(row.getCell(14));
+            String pais = getCellValueAsString(row.getCell(15));
+            String foto = getCellValueAsString(row.getCell(16));
+            String religion = getCellValueAsString(row.getCell(17));
+            LocalDate fechaNacimiento = parseFechaNacimiento(row.getCell(18));
+            LocalDateTime fechaMatriculaConHora = parseFechaMatriculaConHora(row.getCell(19));
 
-            // ✅ DETECCIÓN MEJORADA: incluir periodo
+            // ✅ DETECCIÓN MEJORADA (sin periodo)
             boolean tieneDatosAcademicos = (modoContrato != null && !modoContrato.trim().isEmpty()) &&
                     (modalidadEstudio != null && !modalidadEstudio.trim().isEmpty()) &&
                     (sedeNombre != null && !sedeNombre.trim().isEmpty()) &&
-                    (programaNombre != null && !programaNombre.trim().isEmpty()) &&
-                    (periodoNombre != null && !periodoNombre.trim().isEmpty());
+                    (programaNombre != null && !programaNombre.trim().isEmpty());
 
             if (tieneDatosAcademicos) {
                 if (filtros.getTipoPersona() != null && filtros.getTipoPersona() != TipoPersona.ESTUDIANTE) {
@@ -203,19 +209,62 @@ public class MatriculaServiceImp extends CrudGenericoServiceImp<Matricula, Long>
 
             // Verificar si la persona ya existe
             Optional<Persona> personaExistente = personaService.findByDocumento(documento);
+
             if (personaExistente.isPresent()) {
-                result.getWarnings().add("Fila " + rowNum + ": Persona con documento " +
-                        documento + " ya existe - registro omitido");
-                log.warn("Persona con documento {} ya existe en la fila {} - omitiendo registro",
-                        documento, rowNum);
-                return;
+                Persona persona = personaExistente.get();
+
+                if (tipoPersona == TipoPersona.ESTUDIANTE) {
+                    // ✅ BUSCAR SI YA TIENE MATRÍCULA EN ESTE PERIODO
+                    Optional<Matricula> matriculaExistente = repo.findByPersonaIdPersonaAndPeriodoIdPeriodo(
+                            persona.getIdPersona(),
+                            periodoSeleccionado.getIdPeriodo()
+                    );
+
+                    if (matriculaExistente.isPresent()) {
+                        // ✅ ACTUALIZAR MATRÍCULA EXISTENTE
+                        Matricula matricula = matriculaExistente.get();
+                        Sede sede = obtenerOValidarSede(sedeNombre, filtros);
+                        Facultad facultad = obtenerOValidarFacultad(facultadNombre, filtros);
+                        ProgramaEstudio programa = obtenerOValidarPrograma(programaNombre, facultad, filtros);
+
+                        if (sede == null) throw new Exception("Sede no coincide con filtros");
+                        if (facultad == null) throw new Exception("Facultad no coincide con filtros");
+                        if (programa == null) throw new Exception("Programa no coincide con filtros");
+
+                        matricula.setSede(sede);
+                        matricula.setFacultad(facultad);
+                        matricula.setProgramaEstudio(programa);
+                        matricula.setModoContrato(modoContrato);
+                        matricula.setModalidadEstudio(modalidadEstudio);
+                        matricula.setCiclo(ciclo);
+                        matricula.setGrupo(grupo);
+                        matricula.setFechaMatricula(fechaMatriculaConHora != null ?
+                                fechaMatriculaConHora : LocalDateTime.now());
+
+                        repo.save(matricula);
+                        result.getWarnings().add("Fila " + rowNum +
+                                ": Matrícula actualizada para documento " + documento);
+                        log.info("✅ Matrícula actualizada: {} - Periodo: {}",
+                                documento, periodoSeleccionado.getNombre());
+                    } else {
+                        // ✅ CREAR NUEVA MATRÍCULA EN EL PERIODO SELECCIONADO
+                        crearNuevaMatricula(persona, filtros, periodoSeleccionado, modoContrato,
+                                modalidadEstudio, ciclo, grupo, fechaMatriculaConHora,
+                                sedeNombre, facultadNombre, programaNombre);
+
+                        log.info("✅ Nueva matrícula creada: {} - Periodo: {}",
+                                documento, periodoSeleccionado.getNombre());
+                    }
+                }
+
+                result.setExitosos(result.getExitosos() + 1);
+                return; // No crear nueva persona
             }
 
             // Verificar entidades relacionadas (solo para estudiantes)
             Sede sede = null;
             Facultad facultad = null;
             ProgramaEstudio programa = null;
-            Periodo periodo = null; // ✅ NUEVO
 
             if (tipoPersona == TipoPersona.ESTUDIANTE) {
                 sede = obtenerOValidarSede(sedeNombre, filtros);
@@ -226,10 +275,6 @@ public class MatriculaServiceImp extends CrudGenericoServiceImp<Matricula, Long>
 
                 programa = obtenerOValidarPrograma(programaNombre, facultad, filtros);
                 if (programa == null) throw new Exception("Programa no coincide con filtros");
-
-                // ✅ NUEVO: Obtener o validar periodo
-                periodo = obtenerOValidarPeriodo(periodoNombre, filtros);
-                if (periodo == null) throw new Exception("Periodo no coincide con filtros");
             }
 
             // Crear usuario automáticamente
@@ -251,14 +296,14 @@ public class MatriculaServiceImp extends CrudGenericoServiceImp<Matricula, Long>
             persona.setUsuario(usuarioCreado);
             persona = personaService.save(persona);
 
-            // ✅ CREAR MATRÍCULA SOLO PARA ESTUDIANTES (con periodo)
+            // ✅ CREAR MATRÍCULA SOLO PARA ESTUDIANTES (con periodo del filtro)
             if (tipoPersona == TipoPersona.ESTUDIANTE) {
                 Matricula matricula = new Matricula();
                 matricula.setPersona(persona);
                 matricula.setSede(sede);
                 matricula.setFacultad(facultad);
                 matricula.setProgramaEstudio(programa);
-                matricula.setPeriodo(periodo); // ✅ NUEVO
+                matricula.setPeriodo(periodoSeleccionado); // ✅ Periodo del filtro
                 matricula.setModoContrato(modoContrato);
                 matricula.setModalidadEstudio(modalidadEstudio);
                 matricula.setCiclo(ciclo);
@@ -269,7 +314,7 @@ public class MatriculaServiceImp extends CrudGenericoServiceImp<Matricula, Long>
                 repo.save(matricula);
 
                 log.info("✅ Fila {} procesada como ESTUDIANTE: {} - Usuario: {} - Periodo: {}",
-                        rowNum, documento, usuarioCreado.getUser(), periodoNombre);
+                        rowNum, documento, usuarioCreado.getUser(), periodoSeleccionado.getNombre());
             } else {
                 log.info("✅ Fila {} procesada como INVITADO: {} - Usuario: {}",
                         rowNum, documento, usuarioCreado.getUser());
@@ -282,23 +327,31 @@ public class MatriculaServiceImp extends CrudGenericoServiceImp<Matricula, Long>
         }
     }
 
-    // ✅ NUEVO MÉTODO: obtenerOValidarPeriodo
-    private Periodo obtenerOValidarPeriodo(String periodoNombre, ImportFilterDTO filtros) {
-        if (filtros.getPeriodoId() != null) {
-            Periodo periodoFiltro = periodoService.findById(filtros.getPeriodoId());
-            if (!periodoFiltro.getNombre().equalsIgnoreCase(periodoNombre)) {
-                log.warn("Periodo '{}' no coincide con filtro '{}'",
-                        periodoNombre, periodoFiltro.getNombre());
-                return null;
-            }
-            return periodoFiltro;
-        }
+    // ✅ NUEVO MÉTODO AUXILIAR
+    private void crearNuevaMatricula(Persona persona, ImportFilterDTO filtros,
+                                     Periodo periodo, String modoContrato,
+                                     String modalidadEstudio, String ciclo,
+                                     String grupo, LocalDateTime fechaMatricula,
+                                     String sedeNombre, String facultadNombre,
+                                     String programaNombre) {
+        Sede sede = obtenerOValidarSede(sedeNombre, filtros);
+        Facultad facultad = obtenerOValidarFacultad(facultadNombre, filtros);
+        ProgramaEstudio programa = obtenerOValidarPrograma(programaNombre, facultad, filtros);
 
-        return periodoService.findByNombre(periodoNombre)
-                .orElseGet(() -> {
-                    log.warn("Periodo '{}' no encontrado - usando periodo activo", periodoNombre);
-                    return periodoService.getPeriodoActivo();
-                });
+        Matricula matricula = new Matricula();
+        matricula.setPersona(persona);
+        matricula.setSede(sede);
+        matricula.setFacultad(facultad);
+        matricula.setProgramaEstudio(programa);
+        matricula.setPeriodo(periodo);
+        matricula.setModoContrato(modoContrato);
+        matricula.setModalidadEstudio(modalidadEstudio);
+        matricula.setCiclo(ciclo);
+        matricula.setGrupo(grupo);
+        matricula.setFechaMatricula(fechaMatricula != null ? fechaMatricula : LocalDateTime.now());
+        matricula.setEstado("ACTIVO");
+
+        repo.save(matricula);
     }
 
     private Sede obtenerOValidarSede(String sedeNombre, ImportFilterDTO filtros) {
@@ -506,7 +559,6 @@ public class MatriculaServiceImp extends CrudGenericoServiceImp<Matricula, Long>
     @Override
     public byte[] exportarMatriculasAExcel(Long sedeId, Long facultadId, Long programaId,
                                            Long periodoId, TipoPersona tipoPersona) throws Exception {
-        // ✅ ACTUALIZADO: Obtener matrículas filtradas CON PERIODO
         List<Matricula> matriculas = findByFiltros(sedeId, facultadId, programaId, periodoId, tipoPersona);
 
         if (matriculas.isEmpty()) {
@@ -520,7 +572,7 @@ public class MatriculaServiceImp extends CrudGenericoServiceImp<Matricula, Long>
     @Override
     public byte[] descargarPlantilla() throws Exception {
         try {
-            log.info("Generando plantilla de importación CON PERIODO...");
+            log.info("Generando plantilla de importación SIN PERIODO...");
 
             Workbook workbook = new XSSFWorkbook();
             Sheet sheet = workbook.createSheet("Plantilla_Importacion");
@@ -538,10 +590,10 @@ public class MatriculaServiceImp extends CrudGenericoServiceImp<Matricula, Long>
             exampleStyle.setFillForegroundColor(IndexedColors.LIGHT_YELLOW.getIndex());
             exampleStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 
-            // ✅ ENCABEZADOS ACTUALIZADOS (con PERIODO)
+            // ✅ ENCABEZADOS SIN PERIODO
             String[] headers = {
                     "MODO_CONTRATO", "MODALIDAD_ESTUDIO", "SEDE", "FACULTAD", "PROGRAMA_ESTUDIO",
-                    "PERIODO", "CICLO", "GRUPO", "ID_PERSONA", "CODIGO_ESTUDIANTE", "NOMBRE_COMPLETO",
+                    "CICLO", "GRUPO", "ID_PERSONA", "CODIGO_ESTUDIANTE", "NOMBRE_COMPLETO",
                     "DOCUMENTO", "CORREO", "USUARIO", "CORREO_INSTITUCIONAL", "CELULAR",
                     "PAIS", "FOTO", "RELIGION", "FECHA_NACIMIENTO", "FECHA_MATRICULA"
             };
@@ -553,19 +605,19 @@ public class MatriculaServiceImp extends CrudGenericoServiceImp<Matricula, Long>
                 cell.setCellStyle(headerStyle);
             }
 
-            // ✅ DATOS DE EJEMPLO ACTUALIZADOS (con PERIODO = "2025-I")
+            // ✅ DATOS DE EJEMPLO SIN PERIODO
             String[][] examples = {
                     {
                             "Nuevo Ingreso", "Presencial", "Filial Juliaca",
                             "Facultad de Ingeniería y Arquitectura", "EP Ingeniería de Sistemas",
-                            "2025-I", "2024-I", "A", "1001", "20240001", "EJEMPLO NOMBRE APELLIDO",
+                            "2024-I", "A", "1001", "20240001", "EJEMPLO NOMBRE APELLIDO",
                             "87654321", "ejemplo@email.com", "usuario123", "20240001@upeu.edu.pe",
                             "987654321", "Perú", "foto.jpg", "Católico", "15/05/2000", "07/08/2024 10:00 AM"
                     },
                     {
                             "Continua", "Virtual", "Filial Juliaca",
                             "Facultad de Ingeniería y Arquitectura", "EP Ingeniería de Sistemas",
-                            "2025-I", "2024-I", "B", "1002", "20240002", "OTRO EJEMPLO NOMBRE",
+                            "2024-I", "B", "1002", "20240002", "OTRO EJEMPLO NOMBRE",
                             "87654322", "otro@email.com", "usuario456", "20240002@upeu.edu.pe",
                             "987654322", "Perú", "foto2.jpg", "Cristiano", "20/08/1999", "07/08/2024 11:30 AM"
                     }
@@ -598,7 +650,7 @@ public class MatriculaServiceImp extends CrudGenericoServiceImp<Matricula, Long>
 
             Row noteRow3 = sheet.createRow(examples.length + 4);
             Cell noteCell3 = noteRow3.createCell(0);
-            noteCell3.setCellValue("2. PERIODO: Use formato '2025-I', '2025-II', etc.");
+            noteCell3.setCellValue("2. El PERIODO se seleccionará desde el filtro de importación");
 
             Row noteRow4 = sheet.createRow(examples.length + 5);
             Cell noteCell4 = noteRow4.createCell(0);
@@ -608,7 +660,7 @@ public class MatriculaServiceImp extends CrudGenericoServiceImp<Matricula, Long>
             workbook.write(outputStream);
             workbook.close();
 
-            log.info("Plantilla con PERIODO generada exitosamente");
+            log.info("Plantilla SIN PERIODO generada exitosamente");
             return outputStream.toByteArray();
 
         } catch (Exception e) {

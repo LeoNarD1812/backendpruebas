@@ -92,12 +92,16 @@ public class MatriculaController {
             @RequestParam(required = false) Long sedeId,
             @RequestParam(required = false) Long facultadId,
             @RequestParam(required = false) Long programaId,
-            @RequestParam(required = false) Long periodoId,
+            @RequestParam(required = true) Long periodoId,
             @RequestParam(required = false) TipoPersona tipoPersona
     ) {
         try {
             if (file.isEmpty()) {
                 throw new RuntimeException("El archivo está vacío");
+            }
+
+            if (periodoId == null) {
+                throw new RuntimeException("Debe seleccionar un periodo para la importación");
             }
 
             String filename = file.getOriginalFilename();
@@ -119,10 +123,9 @@ public class MatriculaController {
                 if (sedeId != null) result.getWarnings().add("Filtro Sede ID: " + sedeId);
                 if (facultadId != null) result.getWarnings().add("Filtro Facultad ID: " + facultadId);
                 if (programaId != null) result.getWarnings().add("Filtro Programa ID: " + programaId);
-                if (periodoId != null) result.getWarnings().add("Filtro Periodo ID: " + periodoId);
                 if (tipoPersona != null) result.getWarnings().add("Tipo Persona: " + tipoPersona);
             } else {
-                result.getWarnings().add("No se aplicaron filtros - se importaron todos los registros válidos");
+                result.getWarnings().add("Periodo de matrícula: " + periodoId);
             }
 
             return ResponseEntity.ok(result);

@@ -11,6 +11,8 @@ import java.util.Optional;
 public interface IMatriculaRepository extends ICrudGenericoRepository<Matricula, Long>{
     Optional<Matricula> findByPersonaIdPersona(Long idPersona);
 
+    Optional<Matricula> findByPersonaIdPersonaAndPeriodoIdPeriodo(Long personaId, Long periodoId);
+
     @Query("SELECT m FROM Matricula m WHERE m.persona.codigoEstudiante = :codigo")
     List<Matricula> findByCodigoEstudiante(@Param("codigo") String codigo);
 
