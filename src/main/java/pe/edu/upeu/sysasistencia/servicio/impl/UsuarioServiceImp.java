@@ -49,7 +49,7 @@ public class    UsuarioServiceImp extends CrudGenericoServiceImp<Usuario, Long> 
         // 2. Validar contraseña
         if (passwordEncoder.matches(credentialsDto.clave(), user.getClave())) {
 
-            // 3. Mapeo (Esto está bien, 'personaId' viene null)
+            // 3. Mapeo (personaId vendrá null, gracias al Mapper corregido)
             UsuarioDTO userDto = userMapper.toDTO(user);
 
             // 4. --- ESTA ES LA PARTE IMPORTANTE ---

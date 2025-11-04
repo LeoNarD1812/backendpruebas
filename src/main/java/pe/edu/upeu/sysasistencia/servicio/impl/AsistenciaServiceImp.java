@@ -78,7 +78,7 @@ public class AsistenciaServiceImp extends CrudGenericoServiceImp<Asistencia, Lon
         // 3. ✅ VALIDAR HORARIO: No permitir antes de 30 min previos ni después de 2 horas
         LocalTime ahora = LocalTime.now();
         LocalTime ventanaInicio = evento.getHoraInicio().minusMinutes(30);
-        LocalTime ventanaFin = evento.getHoraFin().plusHours(2);
+        LocalTime ventanaFin = evento.getHoraFin().plusMinutes(10);
 
         if (ahora.isBefore(ventanaInicio)) {
             throw new RuntimeException(
