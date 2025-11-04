@@ -11,6 +11,7 @@ public class GrupoPequenoDTO {
     private Long idGrupoPequeno;
     private Long grupoGeneralId;
     private String grupoGeneralNombre;
+    private Long eventoGeneralId;
     private String nombre;
     private Long liderId;
     private String liderNombre;

@@ -16,13 +16,16 @@ public interface IMatriculaRepository extends ICrudGenericoRepository<Matricula,
     @Query("SELECT m FROM Matricula m WHERE m.persona.codigoEstudiante = :codigo")
     List<Matricula> findByCodigoEstudiante(@Param("codigo") String codigo);
 
-    // ✅ ACTUALIZADO: Query con periodo
+    // ✅ CONSULTA CORREGIDA
+    // Esta consulta usa COALESCE para manejar correctamente los filtros nulos.
+    // Si el filtro (ej: :sedeId) es null, lo reemplaza con el valor de la columna (m.sede.idSede),
+    // haciendo que la comparación (m.sede.idSede = m.sede.idSede) siempre sea verdadera para ese filtro.
     @Query("SELECT m FROM Matricula m WHERE " +
-            "(:sedeId IS NULL OR m.sede.idSede = :sedeId) AND " +
-            "(:facultadId IS NULL OR m.facultad.idFacultad = :facultadId) AND " +
-            "(:programaId IS NULL OR m.programaEstudio.idPrograma = :programaId) AND " +
-            "(:periodoId IS NULL OR m.periodo.idPeriodo = :periodoId) AND " +
-            "(:tipoPersona IS NULL OR m.persona.tipoPersona = :tipoPersona)")
+            "m.sede.idSede = COALESCE(:sedeId, m.sede.idSede) AND " +
+            "m.facultad.idFacultad = COALESCE(:facultadId, m.facultad.idFacultad) AND " +
+            "m.programaEstudio.idPrograma = COALESCE(:programaId, m.programaEstudio.idPrograma) AND " +
+            "m.periodo.idPeriodo = COALESCE(:periodoId, m.periodo.idPeriodo) AND " +
+            "m.persona.tipoPersona = COALESCE(:tipoPersona, m.persona.tipoPersona)")
     List<Matricula> findByFiltros(
             @Param("sedeId") Long sedeId,
             @Param("facultadId") Long facultadId,

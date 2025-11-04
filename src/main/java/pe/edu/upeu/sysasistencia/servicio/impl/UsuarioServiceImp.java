@@ -25,7 +25,7 @@ import java.util.List;
 @Service
 @Transactional
 @RequiredArgsConstructor
-public class UsuarioServiceImp extends CrudGenericoServiceImp<Usuario, Long> implements IUsuarioService {
+public class    UsuarioServiceImp extends CrudGenericoServiceImp<Usuario, Long> implements IUsuarioService {
     private final IUsuarioRepository repo;
     private final IPersonaRepository personaRepository;
     private final IRolService rolService;
@@ -41,15 +41,33 @@ public class UsuarioServiceImp extends CrudGenericoServiceImp<Usuario, Long> imp
 
     @Override
     public UsuarioDTO login(UsuarioDTO.CredencialesDto credentialsDto) {
+
+        // 1. Encontrar el usuario
         Usuario user = repo.findOneByUser(credentialsDto.user())
                 .orElseThrow(() -> new ModelNotFoundException("Usuario desconocido", HttpStatus.NOT_FOUND));
 
+        // 2. Validar contraseña
         if (passwordEncoder.matches(credentialsDto.clave(), user.getClave())) {
-            return userMapper.toDTO(user);
+
+            // 3. Mapeo (Esto está bien, 'personaId' viene null)
+            UsuarioDTO userDto = userMapper.toDTO(user);
+
+            // 4. --- ESTA ES LA PARTE IMPORTANTE ---
+            // Buscamos a la persona usando el ID del usuario
+            Optional<Persona> persona = personaRepository.findByUsuarioIdUsuario(user.getIdUsuario()); // <-- CAMBIO AQUÍ
+
+            if (persona.isPresent()) {
+                userDto.setPersonaId(persona.get().getIdPersona());
+            }
+            // ------------------------------------
+
+            return userDto;
         }
 
         throw new ModelNotFoundException("Contraseña inválida", HttpStatus.BAD_REQUEST);
     }
+
+
     @Override
     public List<Usuario> findByRol(String rolNombre) {
         try {

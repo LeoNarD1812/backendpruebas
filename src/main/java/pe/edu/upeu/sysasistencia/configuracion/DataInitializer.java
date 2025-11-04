@@ -218,6 +218,9 @@ public class DataInitializer implements CommandLineRunner {
                 crearAcceso("Registrar Asistencia", "/asistencias/registrar", "fa-check-square"),
                 crearAcceso("Ver Asistencias", "/asistencias", "fa-list-alt"),
 
+                // Accesos para INTEGRANTE
+                crearAcceso("Escanear QR", "/asistencias/escanear", "fa-qrcode"),
+
                 // Accesos para todos
                 crearAcceso("Mis Asistencias", "/asistencias/persona", "fa-user-check"),
                 crearAcceso("Reportes Eventos", "/asistencias/reporte", "fa-chart-line")
@@ -262,7 +265,8 @@ public class DataInitializer implements CommandLineRunner {
         // INTEGRANTE: dashboard integrante + ver sus asistencias
         asignarAccesosPorNombres(Rol.RolNombre.INTEGRANTE, Arrays.asList(
                 "Dashboard Integrante",
-                "Mis Asistencias"
+                "Mis Asistencias",
+                "Escanear QR"
         ));
     }
 

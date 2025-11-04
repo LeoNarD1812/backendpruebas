@@ -9,6 +9,7 @@ import pe.edu.upeu.sysasistencia.modelo.Usuario;
 public interface UsuarioMapper extends GenericMapper<UsuarioDTO, Usuario> {
 
     @Mapping(target = "token", ignore = true)
+    //@Mapping(source = "persona.idPersona", target = "personaId")
     UsuarioDTO toDTO(Usuario usuario);
 
     @Mapping(target = "clave", ignore = true)

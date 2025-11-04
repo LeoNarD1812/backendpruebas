@@ -18,6 +18,8 @@ public class UsuarioDTO {
     private String estado;
     private String token;
 
+    private Long personaId;
+
     public record CredencialesDto(
             @NotBlank(message = "El usuario es obligatorio")
             String user,

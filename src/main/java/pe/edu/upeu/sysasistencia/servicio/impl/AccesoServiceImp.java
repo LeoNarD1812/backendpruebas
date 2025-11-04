@@ -49,19 +49,35 @@ public class AccesoServiceImp extends CrudGenericoServiceImp<Acceso, Long> imple
             String nombre = acceso.getNombre();
             String icono = acceso.getIcono();
 
+            // --- REEMPLAZA TU LÓGICA DE 'if/else if' CON ESTA ---
+
             if (url.contains("dashboard") || nombre.toLowerCase().contains("dashboard")) {
                 addMenuItem(grupos.get("dashboard"), acceso, nombre, url, icono);
+
             } else if (url.contains("matriculas") || url.contains("sedes") ||
                     url.contains("facultades") || url.contains("programas") ||
                     url.contains("usuarios") || url.contains("roles") ||
                     url.contains("configuracion") || nombre.toLowerCase().contains("admin")) {
                 addMenuItem(grupos.get("administracion"), acceso, nombre, url, icono);
+
+                // REGLA 1: Capturar el reporte de asistencia (por URL exacta)
+            } else if (url.equals("/asistencias/reporte")) {
+                addMenuItem(grupos.get("asistencia"), acceso, "Reporte Asistencia", url, icono);
+
+                // REGLA 2: Capturar el resto de enlaces de "Asistencia"
+            } else if (url.contains("asistencias") || url.contains("asistencia") ||
+                    nombre.toLowerCase().contains("asistencia")) {
+                addMenuItem(grupos.get("asistencia"), acceso, nombre, url, icono);
+
+                // REGLA 3: Capturar el reporte general (por URL exacta)
+            } else if (url.equals("/reportes")) {
+                addMenuItem(grupos.get("eventos"), acceso, "Reporte Eventos", url, icono);
+
+                // REGLA 4: Capturar el resto de enlaces de "Eventos"
             } else if (url.contains("eventos") || url.contains("grupos") ||
                     url.contains("sesiones") || nombre.toLowerCase().contains("evento")) {
                 addMenuItem(grupos.get("eventos"), acceso, nombre, url, icono);
-            } else if (url.contains("asistencias") || url.contains("asistencia") ||
-                    nombre.toLowerCase().contains("asistencia") || nombre.toLowerCase().contains("reporte")) {
-                addMenuItem(grupos.get("asistencia"), acceso, nombre, url, icono);
+
             } else {
                 // Item suelto - crear grupo individual
                 String groupKey = "item_" + acceso.getIdAcceso();
@@ -73,6 +89,7 @@ public class AccesoServiceImp extends CrudGenericoServiceImp<Acceso, Long> imple
                         false
                 ));
             }
+            // --- FIN DEL REEMPLAZO ---
         }
 
         // Filtrar grupos vacíos y ordenar
@@ -82,11 +99,12 @@ public class AccesoServiceImp extends CrudGenericoServiceImp<Acceso, Long> imple
                 .collect(Collectors.toList());
     }
 
-    private void addMenuItem(MenuGroup grupo, Acceso acceso, String nombre, String url, String icono) {
+    // --- CAMBIO AQUÍ: 'nombre' por 'label' ---
+    private void addMenuItem(MenuGroup grupo, Acceso acceso, String label, String url, String icono) {
         if (grupo.getPath() == null) { // Solo agregar items si es grupo colapsable
             grupo.getItems().add(new MenuItem(
                     acceso.getIdAcceso(),
-                    nombre,
+                    label, // <-- Usar el 'label' modificado
                     url,
                     icono
             ));

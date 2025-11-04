@@ -10,6 +10,7 @@ public interface GrupoPequenoMapper extends GenericMapper<GrupoPequenoDTO, Grupo
 
     @Mapping(source = "grupoGeneral.idGrupoGeneral", target = "grupoGeneralId")
     @Mapping(source = "grupoGeneral.nombre", target = "grupoGeneralNombre")
+    @Mapping(source = "grupoGeneral.eventoGeneral.idEventoGeneral", target = "eventoGeneralId")
     @Mapping(source = "lider.idPersona", target = "liderId")
     @Mapping(source = "lider.nombreCompleto", target = "liderNombre")
     @Mapping(source = "lider.codigoEstudiante", target = "liderCodigo")
