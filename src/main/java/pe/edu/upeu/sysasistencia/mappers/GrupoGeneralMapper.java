@@ -20,7 +20,7 @@ public interface GrupoGeneralMapper extends GenericMapper<GrupoGeneralDTO, Grupo
     @Mapping(target = "eventoGeneral.lugar", ignore = true)
     @Mapping(target = "eventoGeneral.fechaInicio", ignore = true)
     @Mapping(target = "eventoGeneral.fechaFin", ignore = true)
-    @Mapping(target = "eventoGeneral.cicloAcademico", ignore = true)
+    @Mapping(target = "eventoGeneral.periodo", ignore = true)
     @Mapping(target = "eventoGeneral.programa", ignore = true)
     @Mapping(target = "eventoGeneral.estado", ignore = true)
     @Mapping(target = "eventoGeneral.createdAt", ignore = true)

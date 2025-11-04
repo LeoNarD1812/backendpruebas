@@ -4,8 +4,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pe.edu.upeu.sysasistencia.dtos.UsuarioDTO;
+import pe.edu.upeu.sysasistencia.dtos.PersonaDTO;
 import pe.edu.upeu.sysasistencia.mappers.UsuarioMapper;
+import pe.edu.upeu.sysasistencia.mappers.PersonaMapper;
 import pe.edu.upeu.sysasistencia.modelo.Usuario;
+import pe.edu.upeu.sysasistencia.modelo.Persona;
 import pe.edu.upeu.sysasistencia.servicio.IUsuarioService;
 
 import java.util.List;
@@ -17,6 +20,7 @@ import java.util.List;
 public class UsuarioController {
     private final IUsuarioService usuarioService;
     private final UsuarioMapper usuarioMapper;
+    private final PersonaMapper personaMapper;
 
     // ... (otros endpoints como findAll, findById, etc. si son necesarios)
 
@@ -26,5 +30,13 @@ public class UsuarioController {
     public ResponseEntity<List<UsuarioDTO>> getUsuariosPorRol(@PathVariable String rolNombre) {
         List<Usuario> usuarios = usuarioService.findByRol(rolNombre);
         return ResponseEntity.ok(usuarioMapper.toDTOs(usuarios));
+    }
+    @GetMapping("/lideres-disponibles")
+    public ResponseEntity<List<PersonaDTO>> getLideresDisponibles(
+            @RequestParam(required = false) Long excludeGrupoId
+    ) {
+        List<Persona> lideres = usuarioService.getLideresDisponibles(excludeGrupoId);
+        // Devuelve PersonaDTO, que el frontend puede usar
+        return ResponseEntity.ok(personaMapper.toDTOs(lideres));
     }
 }

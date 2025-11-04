@@ -16,6 +16,7 @@ import pe.edu.upeu.sysasistencia.repositorio.IUsuarioRepository;
 import pe.edu.upeu.sysasistencia.servicio.IRolService;
 import pe.edu.upeu.sysasistencia.servicio.IUsuarioRolService;
 import pe.edu.upeu.sysasistencia.servicio.IUsuarioService;
+import pe.edu.upeu.sysasistencia.modelo.Persona;
 
 import java.util.Optional;
 import java.util.List;
@@ -60,6 +61,11 @@ public class UsuarioServiceImp extends CrudGenericoServiceImp<Usuario, Long> imp
             log.error("Rol no válido: {}", rolNombre);
             return List.of(); // Devuelve lista vacía si el rol no existe
         }
+    }
+    @Override
+    public List<Persona> getLideresDisponibles(Long excludeGrupoId) {
+        // Llama al nuevo método del repositorio de personas
+        return personaRepository.findLideresDisponibles(excludeGrupoId);
     }
 
     /**

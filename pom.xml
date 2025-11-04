@@ -109,6 +109,18 @@
             <version>1.5.5.Final</version>
         </dependency>
 
+        <!-- Generación de códigos QR -->
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>core</artifactId>
+            <version>3.5.2</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>javase</artifactId>
+            <version>3.5.2</version>
+        </dependency>
+
         <!-- Cloudinary para gestión de imágenes en la nube -->
         <dependency>
             <groupId>com.cloudinary</groupId>
