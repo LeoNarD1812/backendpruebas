@@ -1,5 +1,6 @@
 package pe.edu.upeu.sysasistencia.modelo;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -23,4 +24,9 @@ public class Facultad {
 
     @Column(name = "descripcion", length = 200)
     private String descripcion;
+
+    @ManyToOne(fetch = FetchType.EAGER) // Cambiado a EAGER
+    @JoinColumn(name = "id_sede", nullable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private Sede sede;
 }

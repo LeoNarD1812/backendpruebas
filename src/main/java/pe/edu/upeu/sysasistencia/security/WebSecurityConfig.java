@@ -20,10 +20,11 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity
+@EnableMethodSecurity(prePostEnabled = true)
 @RequiredArgsConstructor
 public class WebSecurityConfig {
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final JwtAccessDeniedHandler jwtAccessDeniedHandler; // Inyectar el nuevo handler
     private final UserDetailsService jwtUserDetailsService;
     private final JwtRequestFilter jwtRequestFilter;
 
@@ -49,14 +50,21 @@ public class WebSecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(req -> req
                         .requestMatchers(HttpMethod.POST, "/users/login", "/users/register").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/accesos/menu", "/accesos/menu-movil").permitAll() // Para la web y móvil
+                        .requestMatchers(HttpMethod.GET, "/periodos").permitAll() // Permitir acceso a /periodos
+                        .requestMatchers(HttpMethod.GET, "/periodos/**").permitAll() // Permitir acceso a /periodos/{id}
                         .requestMatchers("/mail/**", "/doc/**", "/v3/**","/swagger-ui/**", "/swagger-ui.html").permitAll()
 
+                        // REVERTIDO: Eliminado el permitAll temporal para /personas/my-profile GET
                         .requestMatchers("/matriculas/importar", "/matriculas/exportar").authenticated()
 
-                        .anyRequest().authenticated()
+                        .anyRequest().authenticated() // Todas las demás solicitudes requieren autenticación
                 )
                 .formLogin(AbstractHttpConfigurer::disable)
-                .exceptionHandling(e -> e.authenticationEntryPoint(jwtAuthenticationEntryPoint));
+                .exceptionHandling(e -> e
+                        .authenticationEntryPoint(jwtAuthenticationEntryPoint) // Para 401 Unauthorized
+                        .accessDeniedHandler(jwtAccessDeniedHandler) // Para 403 Forbidden
+                );
 
         http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();

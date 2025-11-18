@@ -9,4 +9,6 @@ import java.util.List;
 public interface IUsuarioRolRepository extends ICrudGenericoRepository<UsuarioRol, UsuarioRolPK>{
     @Query("SELECT ur FROM UsuarioRol ur WHERE ur.usuario.user = :user")
     List<UsuarioRol> findOneByUsuarioUser(@Param("user") String user);
+
+    List<UsuarioRol> findByUsuarioIdUsuario(Long usuarioId); // Nuevo método
 }

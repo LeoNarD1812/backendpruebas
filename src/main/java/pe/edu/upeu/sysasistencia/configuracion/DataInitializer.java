@@ -69,13 +69,19 @@ public class DataInitializer implements CommandLineRunner {
     private void crearFacultades() {
         try {
             String nombreFacultad = "Facultad de Ingeniería y Arquitectura";
+            String nombreSede = "Filial Juliaca";
+
             if (!facultadRepository.existsByNombre(nombreFacultad)) {
+                Sede sede = sedeRepository.findByNombre(nombreSede)
+                        .orElseThrow(() -> new RuntimeException("Sede no encontrada: " + nombreSede));
+
                 Facultad facultad = Facultad.builder()
                         .nombre(nombreFacultad)
                         .descripcion("Facultad de Ingeniería y Arquitectura")
+                        .sede(sede)
                         .build();
                 Facultad facultadGuardada = facultadRepository.save(facultad);
-                log.info("Facultad creada: {} con ID: {}", facultadGuardada.getNombre(), facultadGuardada.getIdFacultad());
+                log.info("Facultad creada: {} con ID: {} en Sede: {}", facultadGuardada.getNombre(), facultadGuardada.getIdFacultad(), sede.getNombre());
             } else {
                 log.debug("La facultad '{}' ya existe", nombreFacultad);
             }
@@ -177,16 +183,17 @@ public class DataInitializer implements CommandLineRunner {
     private void crearAccesos() {
         List<Acceso> accesos = Arrays.asList(
                 // Accesos SUPERADMIN
-                crearAcceso("Usuarios", "/usuarios", "fa-users"),
-                crearAcceso("Roles", "/roles", "fa-user-shield"),
+                crearAcceso("Gestión de Roles", "/roles", "fa-user-shield"),
                 crearAcceso("Configuración", "/configuracion", "fa-cog"),
+                crearAcceso("Gestión de Usuarios", "/users", "fa-users"),
 
                 // Accesos ADMIN
                 crearAcceso("Matrículas", "/matriculas", "fa-clipboard-list"),
-                crearAcceso("Importar Excel", "/matriculas/importar", "fa-file-excel"),               
+                crearAcceso("Importar Excel", "/matriculas/importar", "fa-file-excel"),
                 crearAcceso("Sedes", "/sedes", "fa-building"),
                 crearAcceso("Facultades", "/facultades", "fa-university"),
                 crearAcceso("Programas", "/programas", "fa-graduation-cap"),
+                crearAcceso("Periodos", "/periodos", "fa-calendar-day"),
                 crearAcceso("Reportes", "/reportes", "fa-chart-bar"),
                 crearAcceso("Dashboard Admin", "/dashboard/admin", "fa-tachometer-alt"),
 
@@ -194,7 +201,10 @@ public class DataInitializer implements CommandLineRunner {
                 crearAcceso("Dashboard Líder", "/dashboard/lider", "fa-chart-line"),
 
                 // Accesos INTEGRANTE
-                crearAcceso("Dashboard Integrante", "/dashboard/integrante", "fa-chart-pie")
+                crearAcceso("Dashboard Integrante", "/dashboard/integrante", "fa-chart-pie"),
+
+                // Acceso para todos los roles que tienen un perfil de Persona
+                crearAcceso("Editar Perfil", "/personas/my-profile", "fa-user-edit")
         );
 
         accesos.forEach(acceso -> {
@@ -211,7 +221,7 @@ public class DataInitializer implements CommandLineRunner {
                 crearAcceso("Sesiones", "/eventos-especificos", "fa-clock"),
                 crearAcceso("Grupos Generales", "/grupos-generales", "fa-users"),
                 crearAcceso("Grupos Pequeños", "/grupos-pequenos", "fa-user-friends"),
-                crearAcceso("Gestión Participantes", "/grupo-participantes", "fa-user-plus"),
+                crearAcceso("Gestión de Participantes", "/participantes", "fa-user-plus"), // URL actualizada
 
                 // Accesos para LIDER
                 crearAcceso("Mis Grupos", "/grupos-pequenos/lider", "fa-user-tie"),
@@ -248,25 +258,29 @@ public class DataInitializer implements CommandLineRunner {
 
         // ADMIN: accesos específicos
         asignarAccesosPorNombres(Rol.RolNombre.ADMIN, Arrays.asList(
+                "Gestión de Usuarios",
+                "Gestión de Roles",
+                "Gestión de Participantes", // Nuevo
                 "Matrículas", "Importar Excel", "Sedes", "Facultades",
                 "Programas", "Periodos", "Reportes", "Dashboard Admin",
                 "Eventos Generales", "Sesiones", "Grupos Generales",
-                "Grupos Pequeños", "Gestión Participantes", "Ver Asistencias",
-                "Reportes Eventos"
+                "Grupos Pequeños", "Ver Asistencias",
+                "Reportes Eventos", "Editar Perfil"
         ));
 
         // LIDER: dashboard líder + gestión de sus grupos
         asignarAccesosPorNombres(Rol.RolNombre.LIDER, Arrays.asList(
                 "Dashboard Líder",
+                "Gestión de Participantes", // Nuevo
                 "Mis Grupos", "Registrar Asistencia", "Ver Asistencias",
-                "Mis Asistencias"
+                "Mis Asistencias", "Editar Perfil"
         ));
 
         // INTEGRANTE: dashboard integrante + ver sus asistencias
         asignarAccesosPorNombres(Rol.RolNombre.INTEGRANTE, Arrays.asList(
                 "Dashboard Integrante",
                 "Mis Asistencias",
-                "Escanear QR"
+                "Escanear QR", "Editar Perfil"
         ));
     }
 

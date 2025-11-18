@@ -11,7 +11,6 @@ import pe.edu.upeu.sysasistencia.servicio.IAccesoService;
 
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -28,87 +27,106 @@ public class AccesoServiceImp extends CrudGenericoServiceImp<Acceso, Long> imple
         return repo.getAccesoByUser(username);
     }
 
-    // metodo para 0btener menu
+    // Lógica principal para la WEB
+    @Override
     public List<MenuGroup> getMenuByUser(String username) {
         List<Acceso> accesos = getAccesoByUser(username);
-        return estructurarMenu(accesos);
+        return estructurarMenuParaWeb(accesos);
     }
 
-    private List<MenuGroup> estructurarMenu(List<Acceso> accesos) {
-        Map<String, MenuGroup> grupos = new LinkedHashMap<>();
+    // Lógica separada para el MÓVIL
+    public List<MenuGroup> getMenuMovilByUser(String username) {
+        List<Acceso> accesos = getAccesoByUser(username);
+        return estructurarMenuParaMovil(accesos);
+    }
 
-        // Definir estructura de grupos
+    // Método para la WEB (lógica compleja original)
+    private List<MenuGroup> estructurarMenuParaWeb(List<Acceso> accesos) {
+        Map<String, MenuGroup> grupos = new LinkedHashMap<>();
         grupos.put("dashboard", new MenuGroup(1L, "Dashboard", "fa-tachometer-alt", "/dashboard", true));
         grupos.put("administracion", new MenuGroup(2L, "Administración", "fa-cog", null, true));
         grupos.put("eventos", new MenuGroup(3L, "Eventos", "fa-calendar-alt", null, true));
         grupos.put("asistencia", new MenuGroup(4L, "Asistencia", "fa-user-check", null, false));
+        grupos.put("miPerfil", new MenuGroup(5L, "Mi Perfil", "fa-user-circle", null, true));
 
-        // Asignar items a grupos según la URL y nombre
+        // Temporary list to hold event-related menu items for sorting
+        List<MenuItem> eventosMenuItems = new ArrayList<>();
+
         for (Acceso acceso : accesos) {
             String url = acceso.getUrl();
             String nombre = acceso.getNombre();
             String icono = acceso.getIcono();
 
-            // --- REEMPLAZA TU LÓGICA DE 'if/else if' CON ESTA ---
-
             if (url.contains("dashboard") || nombre.toLowerCase().contains("dashboard")) {
                 addMenuItem(grupos.get("dashboard"), acceso, nombre, url, icono);
-
-            } else if (url.contains("matriculas") || url.contains("sedes") ||
-                    url.contains("facultades") || url.contains("programas") ||
-                    url.contains("usuarios") || url.contains("roles") ||
-                    url.contains("configuracion") || nombre.toLowerCase().contains("admin")) {
+            } else if (url.equals("/personas/my-profile")) {
+                addMenuItem(grupos.get("miPerfil"), acceso, "Editar Perfil", url, icono);
+            } else if (url.contains("matriculas") || url.contains("sedes") || url.contains("facultades") || url.contains("programas") || url.contains("usuarios") || url.contains("users")|| url.contains("roles") || url.contains("configuracion") || url.contains("periodos") || nombre.toLowerCase().contains("admin")) {
                 addMenuItem(grupos.get("administracion"), acceso, nombre, url, icono);
-
-                // REGLA 1: Capturar el reporte de asistencia (por URL exacta)
             } else if (url.equals("/asistencias/reporte")) {
                 addMenuItem(grupos.get("asistencia"), acceso, "Reporte Asistencia", url, icono);
-
-                // REGLA 2: Capturar el resto de enlaces de "Asistencia"
-            } else if (url.contains("asistencias") || url.contains("asistencia") ||
-                    nombre.toLowerCase().contains("asistencia")) {
+            } else if (url.contains("asistencias") || url.contains("asistencia") || nombre.toLowerCase().contains("asistencia")) {
                 addMenuItem(grupos.get("asistencia"), acceso, nombre, url, icono);
-
-                // REGLA 3: Capturar el reporte general (por URL exacta)
-            } else if (url.equals("/reportes")) {
-                addMenuItem(grupos.get("eventos"), acceso, "Reporte Eventos", url, icono);
-
-                // REGLA 4: Capturar el resto de enlaces de "Eventos"
-            } else if (url.contains("eventos") || url.contains("grupos") ||
-                    url.contains("sesiones") || nombre.toLowerCase().contains("evento")) {
-                addMenuItem(grupos.get("eventos"), acceso, nombre, url, icono);
-
-            } else {
-                // Item suelto - crear grupo individual
-                String groupKey = "item_" + acceso.getIdAcceso();
-                grupos.put(groupKey, new MenuGroup(
-                        acceso.getIdAcceso(),
-                        nombre,
-                        icono,
-                        url,
-                        false
-                ));
             }
-            // --- FIN DEL REEMPLAZO ---
+            // Collect all Eventos related items into a temporary list
+            else if (url.equals("/reportes") || url.contains("eventos") || url.contains("grupos") || url.contains("sesiones") || nombre.toLowerCase().contains("evento") || url.contains("participantes")) {
+                eventosMenuItems.add(new MenuItem(acceso.getIdAcceso(), nombre, url, icono));
+            }
+            else {
+                // If not caught by any specific group, add as a top-level item (should be rare for submenu items)
+                grupos.put("item_" + acceso.getIdAcceso(), new MenuGroup(acceso.getIdAcceso(), nombre, icono, url, false));
+            }
         }
 
-        // Filtrar grupos vacíos y ordenar
+        // Define a custom order for event items
+        Map<String, Integer> orderMap = new HashMap<>();
+        orderMap.put("/eventos/generales", 1);
+        orderMap.put("/eventos/especificos", 2);
+        orderMap.put("/grupos/pequenos", 3);
+        orderMap.put("/grupos/participantes", 4); // "Gestión de Participantes" after "Grupos Pequeños"
+        orderMap.put("/reportes", 5); // "Reporte Eventos" last
+
+        // Sort the event-related menu items
+        eventosMenuItems.sort((item1, item2) -> {
+            Integer order1 = orderMap.getOrDefault(item1.getPath(), 99);
+            Integer order2 = orderMap.getOrDefault(item2.getPath(), 99);
+            return order1.compareTo(order2);
+        });
+
+        // Add sorted event items to the "Eventos" group
+        for (MenuItem item : eventosMenuItems) {
+            grupos.get("eventos").getItems().add(item);
+        }
+
         return grupos.values().stream()
                 .filter(grupo -> grupo.getPath() != null || !grupo.getItems().isEmpty())
                 .sorted(Comparator.comparing(MenuGroup::getId))
                 .collect(Collectors.toList());
     }
 
-    // --- CAMBIO AQUÍ: 'nombre' por 'label' ---
     private void addMenuItem(MenuGroup grupo, Acceso acceso, String label, String url, String icono) {
-        if (grupo.getPath() == null) { // Solo agregar items si es grupo colapsable
+        if (grupo.getPath() == null) { // Only add items if it's a collapsible group
             grupo.getItems().add(new MenuItem(
                     acceso.getIdAcceso(),
-                    label, // <-- Usar el 'label' modificado
+                    label,
                     url,
                     icono
             ));
         }
     }
 
+    // Método para el MÓVIL (con el filtro corregido)
+    private List<MenuGroup> estructurarMenuParaMovil(List<Acceso> accesos) {
+        return accesos.stream()
+                .filter(acceso -> acceso.getUrl() == null || !acceso.getUrl().trim().startsWith("/dashboard"))
+                .map(acceso -> new MenuGroup(
+                        acceso.getIdAcceso(),
+                        acceso.getNombre(),
+                        acceso.getIcono(),
+                        acceso.getUrl(),
+                        false,
+                        List.of()
+                ))
+                .collect(Collectors.toList());
+    }
 }

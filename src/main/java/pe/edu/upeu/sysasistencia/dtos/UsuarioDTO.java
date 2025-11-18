@@ -1,11 +1,12 @@
 package pe.edu.upeu.sysasistencia.dtos;
 
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Email;
-import lombok.AllArgsConstructor;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import pe.edu.upeu.sysasistencia.modelo.TipoPersona; // Importar TipoPersona
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -14,47 +15,34 @@ public class UsuarioDTO {
     private Long idUsuario;
     @NotNull
     private String user;
+    private String clave; // Añadido para la actualización
     @NotNull
     private String estado;
     private String token;
 
+    // --- CAMPOS AÑADIDOS ---
     private Long personaId;
+    private String nombreCompleto;
+    private String codigoEstudiante;
+    private String documento;
+    private String correo; // Añadido para la actualización
+    private String nombreRol;
+    private TipoPersona tipoPersona; // Añadido
+    private String periodo; // Asumiremos que es el nombre del periodo actual
 
     public record CredencialesDto(
-            @NotBlank(message = "El usuario es obligatorio")
-            String user,
-            @NotBlank(message = "La contraseña es obligatoria")
-            String clave
-    ) { }
+            @NotBlank(message = "El usuario es obligatorio") String user,
+            @NotBlank(message = "La contraseña es obligatoria") String clave
+    ) {}
 
-    /**
-     * DTO para registro desde el frontend
-     * Campos requeridos:
-     * - usuario: username único
-     * - nombreCompleto: nombre completo de la persona
-     * - correo: correo electrónico
-     * - documento: número de documento (DNI, pasaporte, etc.)
-     * - clave: contraseña
-     */
     public record UsuarioCrearDto(
-            @NotBlank(message = "El usuario es obligatorio")
-            String user,  // username único
-
-            @NotBlank(message = "El nombre completo es obligatorio")
-            String nombreCompleto,
-
-            @NotBlank(message = "El correo es obligatorio")
-            @Email(message = "Debe ser un correo válido")
-            String correo,
-
-            @NotBlank(message = "El documento es obligatorio")
-            String documento,
-
-            @NotBlank(message = "La contraseña es obligatoria")
-            String clave,
-
-            // Campos opcionales con valores por defecto
-            String rol,      // Por defecto: "INTEGRANTE"
-            String estado    // Por defecto: "ACTIVO"
-    ) { }
+            @NotBlank(message = "El usuario es obligatorio") String user,
+            @NotBlank(message = "El nombre completo es obligatorio") String nombreCompleto,
+            @NotBlank(message = "El correo es obligatorio") @Email(message = "Debe ser un correo válido") String correo,
+            @NotBlank(message = "El documento es obligatorio") String documento,
+            @NotBlank(message = "La contraseña es obligatoria") String clave,
+            String rol,
+            String estado,
+            TipoPersona tipoPersona // Añadido
+    ) {}
 }

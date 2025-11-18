@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.*;
 import pe.edu.upeu.sysasistencia.dtos.AccesoDTO;
 import pe.edu.upeu.sysasistencia.dtos.MenuGroup;
 import pe.edu.upeu.sysasistencia.mappers.AccesoMapper;
-import pe.edu.upeu.sysasistencia.servicio.IAccesoService;
+import pe.edu.upeu.sysasistencia.servicio.impl.AccesoServiceImp; // Cambiado a la implementación
 
 import java.util.List;
 
@@ -15,7 +15,8 @@ import java.util.List;
 @CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class AccesoController {
-    private final IAccesoService accesoService;
+    // Inyectar la implementación para acceder a ambos métodos
+    private final AccesoServiceImp accesoService;
     private final AccesoMapper accesoMapper;
 
     @PostMapping("/user")
@@ -24,10 +25,17 @@ public class AccesoController {
         return ResponseEntity.ok(accesosDTO);
     }
 
-    // Nuevo endpoint para menú estructurado
+    // Endpoint para la WEB
     @PostMapping("/menu")
     public ResponseEntity<List<MenuGroup>> getMenuByUser(@RequestBody String username){
         List<MenuGroup> menu = accesoService.getMenuByUser(username);
+        return ResponseEntity.ok(menu);
+    }
+
+    // NUEVO: Endpoint para el MÓVIL
+    @PostMapping("/menu-movil")
+    public ResponseEntity<List<MenuGroup>> getMenuMovilByUser(@RequestBody String username){
+        List<MenuGroup> menu = accesoService.getMenuMovilByUser(username);
         return ResponseEntity.ok(menu);
     }
 }

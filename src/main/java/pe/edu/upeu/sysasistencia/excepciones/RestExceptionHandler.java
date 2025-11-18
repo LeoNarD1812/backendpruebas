@@ -4,6 +4,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException; // Importar AccessDeniedException
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -48,19 +49,30 @@ public class RestExceptionHandler extends ResponseEntityExceptionHandler {
         );
         return new ResponseEntity<>(err, HttpStatus.BAD_REQUEST);
     }
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<CustomResponse> handleRuntimeException(RuntimeException ex, WebRequest request) {
+
+    // Manejador específico para AccessDeniedException
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<CustomResponse> handleAccessDeniedException(AccessDeniedException ex, WebRequest request) {
         CustomResponse err = new CustomResponse(
-                // Usamos 400 Bad Request para errores lógicos del cliente (datos incorrectos)
-                HttpStatus.BAD_REQUEST.value(),
+                HttpStatus.FORBIDDEN.value(),
                 LocalDateTime.now(),
-                // Capturamos el mensaje de negocio (ej: "El grupo ha alcanzado su capacidad máxima")
-                ex.getMessage(),
+                "Acceso Denegado: No tienes permiso para realizar esta acción.",
                 request.getDescription(false)
         );
-        // Devolvemos 400 Bad Request con el mensaje de error explícito
-        return new ResponseEntity<>(err, HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(err, HttpStatus.FORBIDDEN);
     }
+
+    // COMENTADO TEMPORALMENTE PARA DEPURAR EL ERROR 400 DE ACCESO DENEGADO
+    // @ExceptionHandler(RuntimeException.class)
+    // public ResponseEntity<CustomResponse> handleRuntimeException(RuntimeException ex, WebRequest request) {
+    //     CustomResponse err = new CustomResponse(
+    //             HttpStatus.BAD_REQUEST.value(),
+    //             LocalDateTime.now(),
+    //             ex.getMessage(),
+    //             request.getDescription(false)
+    //     );
+    //     return new ResponseEntity<>(err, HttpStatus.BAD_REQUEST);
+    // }
 
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
