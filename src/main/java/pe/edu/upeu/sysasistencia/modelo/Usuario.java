@@ -1,5 +1,6 @@
 package pe.edu.upeu.sysasistencia.modelo;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -28,5 +29,6 @@ public class Usuario {
     private String estado;
 
     @OneToOne(mappedBy = "usuario")
+    @JsonBackReference
     private Persona persona;
 }

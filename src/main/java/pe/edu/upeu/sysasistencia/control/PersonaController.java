@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -48,28 +49,15 @@ public class PersonaController {
         return ResponseEntity.ok(personaMapper.toDTO(obj));
     }
 
-    // NUEVO: Endpoint para obtener el perfil del usuario autenticado
     @GetMapping("/my-profile")
-    @PreAuthorize("hasAnyRole('ADMIN', 'LIDER', 'INTEGRANTE', 'SUPERADMIN')") // DESCOMENTADO
+    @PreAuthorize("hasAnyRole('ADMIN', 'LIDER', 'INTEGRANTE', 'SUPERADMIN')")
     public ResponseEntity<PersonaDTO> getMyProfile() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String username = authentication.getName();
-        log.info("Attempting to get profile for username: {}", username); // Log 1
-
         Usuario usuario = usuarioService.findOneByUser(username)
-                .orElseThrow(() -> {
-                    log.warn("Usuario not found for username: {}", username); // Log 2
-                    return new ModelNotFoundException("Usuario no encontrado con username: " + username);
-                });
-        log.info("Found user with ID: {}", usuario.getIdUsuario()); // Log 3
-
+                .orElseThrow(() -> new ModelNotFoundException("Usuario no encontrado con username: " + username));
         Persona persona = personaService.findByUsuarioId(usuario.getIdUsuario())
-                .orElseThrow(() -> {
-                    log.warn("Persona not found for user ID: {}", usuario.getIdUsuario()); // Log 4
-                    return new ModelNotFoundException("Persona no encontrada para el usuario: " + username);
-                });
-        log.info("Found persona with ID: {}", persona.getIdPersona()); // Log 5
-
+                .orElseThrow(() -> new ModelNotFoundException("Persona no encontrada para el usuario: " + username));
         return ResponseEntity.ok(personaMapper.toDTO(persona));
     }
 
@@ -80,43 +68,31 @@ public class PersonaController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')") // Solo ADMIN puede actualizar cualquier perfil por ID
+    @PreAuthorize("hasAnyRole('ADMIN', 'LIDER', 'INTEGRANTE', 'SUPERADMIN')")
     public ResponseEntity<PersonaDTO> update(@PathVariable Long id, @RequestBody PersonaDTO dto) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(r -> r.getAuthority().equals("ROLE_ADMIN"));
+
+        if (!isAdmin) {
+            String username = authentication.getName();
+            Usuario usuario = usuarioService.findOneByUser(username)
+                    .orElseThrow(() -> new ModelNotFoundException("Usuario no encontrado con username: " + username));
+            Persona persona = personaService.findByUsuarioId(usuario.getIdUsuario())
+                    .orElseThrow(() -> new ModelNotFoundException("Persona no encontrada para el usuario: " + username));
+
+            if (!persona.getIdPersona().equals(id)) {
+                throw new AccessDeniedException("Acceso Denegado: No tienes permiso para modificar este perfil.");
+            }
+        }
+
         dto.setIdPersona(id);
         Persona obj = personaService.update(id, personaMapper.toEntity(dto));
         return ResponseEntity.ok(personaMapper.toDTO(obj));
     }
 
-    @PutMapping("/my-profile")
-    @PreAuthorize("hasAnyRole('ADMIN', 'LIDER', 'INTEGRANTE', 'SUPERADMIN')") // Todos los roles pueden actualizar su propio perfil
-    public ResponseEntity<PersonaDTO> updateMyProfile(@RequestBody PersonaDTO dto) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String username = authentication.getName();
-        log.info("Attempting to update profile for username: {}", username); // Log para update
-
-        Usuario usuario = usuarioService.findOneByUser(username)
-                .orElseThrow(() -> {
-                    log.warn("Usuario not found for username: {}", username);
-                    return new ModelNotFoundException("Usuario no encontrado con username: " + username);
-                });
-
-        Persona persona = personaService.findByUsuarioId(usuario.getIdUsuario())
-                .orElseThrow(() -> {
-                    log.warn("Persona not found for user ID: {}", usuario.getIdUsuario());
-                    return new ModelNotFoundException("Persona no encontrada para el usuario: " + username);
-                });
-
-        // Asegurarse de que el ID de la persona en el DTO coincida con el ID de la persona del usuario autenticado
-        dto.setIdPersona(persona.getIdPersona());
-        // El usuario no puede cambiar su tipo de persona a través de este endpoint
-        // dto.setTipoPersona(persona.getTipoPersona()); // Mantener el tipo de persona existente
-
-        Persona obj = personaService.update(persona.getIdPersona(), personaMapper.toEntity(dto));
-        return ResponseEntity.ok(personaMapper.toDTO(obj));
-    }
-
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')") // Solo ADMIN puede eliminar perfiles
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CustomResponse> delete(@PathVariable Long id) {
         return ResponseEntity.ok(personaService.delete(id));
     }

@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface IMatriculaRepository extends ICrudGenericoRepository<Matricula, Long>{
-    Optional<Matricula> findByPersonaIdPersona(Long idPersona);
+    List<Matricula> findByPersonaIdPersona(Long idPersona);
 
     Optional<Matricula> findByPersonaIdPersonaAndPeriodoIdPeriodo(Long personaId, Long periodoId);
 

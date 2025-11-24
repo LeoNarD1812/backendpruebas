@@ -23,7 +23,8 @@ public class GrupoGeneralController {
 
     @GetMapping
     public ResponseEntity<List<GrupoGeneralDTO>> findAll() {
-        List<GrupoGeneralDTO> list = grupoMapper.toDTOs(grupoService.findAll());
+        // Usar el nuevo método que incluye las estadísticas
+        List<GrupoGeneralDTO> list = grupoService.findAllConEstadisticas();
         return ResponseEntity.ok(list);
     }
 

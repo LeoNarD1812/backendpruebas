@@ -47,13 +47,12 @@ public class GrupoPequenoController {
 
     @GetMapping("/lider/{liderId}")
     public ResponseEntity<List<GrupoPequenoDTO>> findByLider(@PathVariable Long liderId) {
-        List<GrupoPequenoDTO> list = grupoMapper.toDTOs(
-                grupoService.findByLider(liderId)
-        );
+        // Usar el nuevo método que devuelve DTOs con estadísticas
+        List<GrupoPequenoDTO> list = grupoService.findDtosByLider(liderId);
         return ResponseEntity.ok(list);
     }
 
-    @GetMapping("/disponibles/{eventoGeneralId}") // <-- CAMBIO AQUÍ
+    @GetMapping("/disponibles/{eventoGeneralId}")
     public ResponseEntity<List<ParticipanteDisponibleDTO>> getParticipantesDisponibles(
             @PathVariable Long eventoGeneralId
     ) {

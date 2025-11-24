@@ -21,4 +21,9 @@ public class AsistenciaDTO {
     private String observacion;
     private BigDecimal latitud;
     private BigDecimal longitud;
+
+    // Campos añadidos
+    private String lugar;
+    private String programa;
+    private String periodo;
 }

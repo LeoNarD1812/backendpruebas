@@ -13,6 +13,10 @@ public interface AsistenciaMapper extends GenericMapper<AsistenciaDTO, Asistenci
     @Mapping(source = "persona.idPersona", target = "personaId")
     @Mapping(source = "persona.nombreCompleto", target = "personaNombre")
     @Mapping(source = "persona.codigoEstudiante", target = "personaCodigo")
+    // Campos añadidos
+    @Mapping(source = "eventoEspecifico.lugar", target = "lugar")
+    @Mapping(source = "eventoEspecifico.eventoGeneral.programa.nombre", target = "programa")
+    @Mapping(source = "eventoEspecifico.eventoGeneral.periodo.nombre", target = "periodo")
     AsistenciaDTO toDTO(Asistencia entity);
 
     @Mapping(source = "eventoEspecificoId", target = "eventoEspecifico.idEventoEspecifico")

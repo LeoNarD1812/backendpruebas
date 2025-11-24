@@ -10,5 +10,8 @@ public interface IUsuarioRolRepository extends ICrudGenericoRepository<UsuarioRo
     @Query("SELECT ur FROM UsuarioRol ur WHERE ur.usuario.user = :user")
     List<UsuarioRol> findOneByUsuarioUser(@Param("user") String user);
 
-    List<UsuarioRol> findByUsuarioIdUsuario(Long usuarioId); // Nuevo método
+    List<UsuarioRol> findByUsuarioIdUsuario(Long usuarioId);
+
+    @Query("SELECT r.nombre FROM Rol r JOIN UsuarioRol ur ON r.idRol = ur.rol.idRol WHERE ur.usuario.user = :user")
+    List<String> getNombresRolesPorUsuario(@Param("user") String user);
 }

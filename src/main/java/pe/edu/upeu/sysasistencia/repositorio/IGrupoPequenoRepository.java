@@ -16,4 +16,7 @@ public interface IGrupoPequenoRepository extends ICrudGenericoRepository<GrupoPe
 
     @Query("SELECT gp FROM GrupoPequeno gp WHERE gp.grupoGeneral.eventoGeneral.idEventoGeneral = :eventoId")
     List<GrupoPequeno> findByEventoGeneral(@Param("eventoId") Long eventoId);
+
+    // Método añadido para contar grupos pequeños por grupo general
+    int countByGrupoGeneralIdGrupoGeneral(Long grupoGeneralId);
 }

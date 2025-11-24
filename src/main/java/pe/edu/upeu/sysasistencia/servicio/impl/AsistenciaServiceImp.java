@@ -152,7 +152,7 @@ public class AsistenciaServiceImp extends CrudGenericoServiceImp<Asistencia, Lon
 
     /**
      * ✅ LÍDER: Generar QR para una sesión
-     * Retorna imagen Base64 del QR
+     * Retorna imagen Base64 del QR y registra la asistencia del líder
      */
     public QRResponseDTO generarQRParaSesion(Long eventoEspecificoId, Long liderId) {
         log.info("🔲 Generando QR para sesión {} - Líder {}",
@@ -176,6 +176,27 @@ public class AsistenciaServiceImp extends CrudGenericoServiceImp<Asistencia, Lon
                     "No tienes grupos asignados en este evento"
             );
         }
+
+        // --- INICIO: REGISTRO AUTOMÁTICO DE ASISTENCIA DEL LÍDER ---
+        try {
+            var existente = repo.findByEventoEspecificoIdEventoEspecificoAndPersonaIdPersona(eventoEspecificoId, liderId);
+            if (existente.isEmpty()) {
+                Persona lider = personaService.findById(liderId);
+                Asistencia asistenciaLider = Asistencia.builder()
+                        .eventoEspecifico(evento)
+                        .persona(lider)
+                        .fechaHoraRegistro(LocalDateTime.now())
+                        .estado(Asistencia.EstadoAsistencia.PRESENTE)
+                        .observacion("Asistencia automática por generar QR")
+                        .build();
+                repo.save(asistenciaLider);
+                log.info("✅ Asistencia automática registrada para el líder: {}", lider.getNombreCompleto());
+            }
+        } catch (Exception e) {
+            log.error("❌ Error al registrar asistencia automática del líder: {}", e.getMessage());
+            // No se lanza excepción para no interrumpir la generación del QR
+        }
+        // --- FIN: REGISTRO AUTOMÁTICO DE ASISTENCIA DEL LÍDER ---
 
         // 3. Crear datos del QR
         QRAsistenciaDTO qrData = new QRAsistenciaDTO();

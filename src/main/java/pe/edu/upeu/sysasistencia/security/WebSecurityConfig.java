@@ -55,6 +55,7 @@ public class WebSecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/periodos/**").permitAll() // Permitir acceso a /periodos/{id}
                         .requestMatchers("/mail/**", "/doc/**", "/v3/**","/swagger-ui/**", "/swagger-ui.html").permitAll()
 
+                        .requestMatchers(HttpMethod.PUT, "/personas/**").authenticated()
                         // REVERTIDO: Eliminado el permitAll temporal para /personas/my-profile GET
                         .requestMatchers("/matriculas/importar", "/matriculas/exportar").authenticated()
 

@@ -13,7 +13,9 @@ import pe.edu.upeu.sysasistencia.repositorio.IGrupoParticipanteRepository;
 import pe.edu.upeu.sysasistencia.repositorio.IGrupoPequenoRepository;
 import pe.edu.upeu.sysasistencia.servicio.IGrupoParticipanteService;
 import pe.edu.upeu.sysasistencia.servicio.IPersonaService;
+import java.time.LocalDateTime; // Importar LocalDateTime
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -48,56 +50,48 @@ public class GrupoParticipanteServiceImp extends CrudGenericoServiceImp<GrupoPar
 
         // 1. Validar que el grupo existe
         GrupoPequeno grupo = grupoPequenoRepo.findById(grupoPequenoId)
-                .orElseThrow(() -> {
-                    log.error("❌ Grupo pequeño no encontrado: {}", grupoPequenoId);
-                    return new ModelNotFoundException("Grupo pequeño no encontrado");
-                });
-
-        log.info("✅ Grupo encontrado: {} (Evento: {})",
-                grupo.getNombre(),
-                grupo.getGrupoGeneral().getEventoGeneral().getNombre());
+                .orElseThrow(() -> new ModelNotFoundException("Grupo pequeño no encontrado"));
 
         // 2. Validar que la persona existe
         Persona persona = personaService.findById(personaId);
-        log.info("✅ Persona encontrada: {}", persona.getNombreCompleto());
 
-        // 3. Obtener ID del evento general
-        Long eventoGeneralId = grupo.getGrupoGeneral().getEventoGeneral().getIdEventoGeneral();
-        log.info("📋 Evento General ID: {}", eventoGeneralId);
+        // --- INICIO LÓGICA UPSERT ---
+        Optional<GrupoParticipante> existente = repo.findByGrupoPequenoIdGrupoPequenoAndPersonaIdPersona(grupoPequenoId, personaId);
 
-        // 4. ✅ VALIDACIÓN CORRECTA: Verificar si ya está inscrito en CUALQUIER grupo del evento
-        boolean yaInscritoEnEvento = repo.existeEnEvento(personaId, eventoGeneralId);
-        if (yaInscritoEnEvento) {
-            log.error("❌ La persona {} ya está inscrita en otro grupo del evento {}",
-                    personaId, eventoGeneralId);
-            throw new RuntimeException("La persona ya está inscrita en un grupo de este evento");
+        if (existente.isPresent()) {
+            GrupoParticipante participante = existente.get();
+            if (participante.getEstado() == GrupoParticipante.EstadoParticipante.ACTIVO) {
+                throw new RuntimeException("La persona ya está activa en este grupo.");
+            }
+            // Si está INACTIVO, lo reactivamos
+            log.info("Reactivando participante inactivo...");
+            participante.setEstado(GrupoParticipante.EstadoParticipante.ACTIVO);
+            participante.setFechaInscripcion(LocalDateTime.now()); // CORREGIDO
+            return repo.save(participante);
         }
-        log.info("✅ La persona NO está inscrita en ningún grupo del evento");
+        // --- FIN LÓGICA UPSERT ---
 
-        // 5. Validar capacidad del grupo
+        // 3. Validar capacidad del grupo (solo si es un nuevo participante)
         Integer participantesActuales = grupoPequenoRepo.countParticipantesActivos(grupoPequenoId);
-        log.info("📊 Capacidad: {}/{}", participantesActuales, grupo.getCapacidadMaxima());
-
         if (participantesActuales >= grupo.getCapacidadMaxima()) {
-            log.error("❌ El grupo ha alcanzado su capacidad máxima: {}/{}",
-                    participantesActuales, grupo.getCapacidadMaxima());
             throw new RuntimeException("El grupo ha alcanzado su capacidad máxima");
         }
-        log.info("✅ El grupo tiene espacio disponible");
 
-        // 6. Crear participante
-        GrupoParticipante participante = GrupoParticipante.builder()
+        // 4. Validar si ya está en otro grupo del mismo evento
+        Long eventoGeneralId = grupo.getGrupoGeneral().getEventoGeneral().getIdEventoGeneral();
+        boolean yaInscritoEnEvento = repo.existeEnEvento(personaId, eventoGeneralId);
+        if (yaInscritoEnEvento) {
+            throw new RuntimeException("La persona ya está inscrita en otro grupo de este evento");
+        }
+
+        // 5. Crear nuevo participante
+        GrupoParticipante nuevoParticipante = GrupoParticipante.builder()
                 .grupoPequeno(grupo)
                 .persona(persona)
                 .estado(GrupoParticipante.EstadoParticipante.ACTIVO)
                 .build();
 
-        GrupoParticipante guardado = repo.save(participante);
-
-        log.info("✅ Participante agregado exitosamente: {} al grupo {}",
-                persona.getNombreCompleto(), grupo.getNombre());
-
-        return guardado;
+        return repo.save(nuevoParticipante);
     }
 
     @Override

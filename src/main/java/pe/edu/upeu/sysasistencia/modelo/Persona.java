@@ -1,5 +1,6 @@
 package pe.edu.upeu.sysasistencia.modelo;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -56,5 +57,6 @@ public class Persona {
 
     @OneToOne
     @JoinColumn(name = "usuario_id", unique = true)
+    @JsonManagedReference
     private Usuario usuario;
 }
