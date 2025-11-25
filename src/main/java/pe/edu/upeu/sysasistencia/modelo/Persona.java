@@ -2,17 +2,17 @@ package pe.edu.upeu.sysasistencia.modelo;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDate;
 
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Data
+@Getter
+@Setter
+@ToString(exclude = "usuario") // Excluir 'usuario' del toString para evitar recursión
+@EqualsAndHashCode(exclude = "usuario") // Excluir 'usuario' del equals/hashCode
 @Entity
 @Table(name = "upeu_persona")
 public class Persona {

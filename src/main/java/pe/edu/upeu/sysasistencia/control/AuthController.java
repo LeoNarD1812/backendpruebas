@@ -4,6 +4,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import pe.edu.upeu.sysasistencia.dtos.UsuarioDTO;
@@ -12,6 +14,8 @@ import pe.edu.upeu.sysasistencia.security.JwtUserDetailsService;
 import pe.edu.upeu.sysasistencia.servicio.IUsuarioService;
 
 import java.net.URI;
+import java.util.Collections;
+import java.util.List;
 
 @RequiredArgsConstructor
 @RestController
@@ -35,9 +39,13 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<UsuarioDTO> register(@RequestBody @Valid UsuarioDTO.UsuarioCrearDto user) {
         UsuarioDTO createdUser = userService.register(user);
-        final UserDetails userDetails = jwtUserDetailsService.loadUserByUsername(user.user());
+
+        // Crear UserDetails directamente sin volver a consultar la base de datos
+        List<GrantedAuthority> authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + createdUser.getNombreRol()));
+        UserDetails userDetails = new org.springframework.security.core.userdetails.User(createdUser.getUser(), createdUser.getClave(), authorities);
+        
         createdUser.setToken(jwtTokenUtil.generateToken(userDetails));
+        
         return ResponseEntity.created(URI.create("/users/" + createdUser.getUser())).body(createdUser);
     }
-
 }

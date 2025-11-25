@@ -34,7 +34,7 @@ public class FacultadController {
 
     @PostMapping
     public ResponseEntity<FacultadDTO> save(@RequestBody FacultadDTO dto) {
-        Facultad obj = facultadService.save(facultadMapper.toEntity(dto));
+        Facultad obj = facultadService.create(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(facultadMapper.toDTO(obj));
     }
 

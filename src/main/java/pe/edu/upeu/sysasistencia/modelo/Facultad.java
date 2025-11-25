@@ -25,8 +25,8 @@ public class Facultad {
     @Column(name = "descripcion", length = 200)
     private String descripcion;
 
-    @ManyToOne(fetch = FetchType.EAGER) // Cambiado a EAGER
-    @JoinColumn(name = "id_sede", nullable = false)
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "sede_id", nullable = false)
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Sede sede;
 }

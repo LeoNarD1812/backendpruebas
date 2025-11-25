@@ -8,18 +8,16 @@ import pe.edu.upeu.sysasistencia.dtos.GrupoPequenoDTO;
 import pe.edu.upeu.sysasistencia.dtos.ParticipanteDisponibleDTO;
 import pe.edu.upeu.sysasistencia.excepciones.CustomResponse;
 import pe.edu.upeu.sysasistencia.mappers.GrupoPequenoMapper;
-import pe.edu.upeu.sysasistencia.modelo.EventoGeneral;
-import pe.edu.upeu.sysasistencia.modelo.GrupoPequeno;
-import pe.edu.upeu.sysasistencia.modelo.Matricula;
-import pe.edu.upeu.sysasistencia.repositorio.ICrudGenericoRepository;
-import pe.edu.upeu.sysasistencia.repositorio.IGrupoPequenoRepository;
-import pe.edu.upeu.sysasistencia.repositorio.IGrupoParticipanteRepository;
-import pe.edu.upeu.sysasistencia.repositorio.IMatriculaRepository;
-import pe.edu.upeu.sysasistencia.servicio.IGrupoPequenoService;
+import pe.edu.upeu.sysasistencia.modelo.*;
+import pe.edu.upeu.sysasistencia.repositorio.*;
 import pe.edu.upeu.sysasistencia.servicio.IEventoGeneralService;
+import pe.edu.upeu.sysasistencia.servicio.IGrupoPequenoService;
+import pe.edu.upeu.sysasistencia.servicio.IUsuarioRolService;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -33,6 +31,8 @@ public class GrupoPequenoServiceImp extends CrudGenericoServiceImp<GrupoPequeno,
     private final IGrupoParticipanteRepository participanteRepo;
     private final IEventoGeneralService eventoService;
     private final GrupoPequenoMapper grupoPequenoMapper;
+    private final IPersonaRepository personaRepo;
+    private final IUsuarioRolService usuarioRolService; // Inyectado
 
     @Override
     protected ICrudGenericoRepository<GrupoPequeno, Long> getRepo() {
@@ -67,10 +67,8 @@ public class GrupoPequenoServiceImp extends CrudGenericoServiceImp<GrupoPequeno,
             log.info("Eliminando {} participantes del grupo pequeño ID: {}", participantes.size(), id);
             participanteRepo.deleteAll(participantes);
         }
-
         repo.deleteById(id);
         log.info("Grupo pequeño con ID {} eliminado", id);
-
         return new CustomResponse(200, LocalDateTime.now(), "true", "Grupo pequeño y sus participantes eliminados correctamente");
     }
 
@@ -84,36 +82,44 @@ public class GrupoPequenoServiceImp extends CrudGenericoServiceImp<GrupoPequeno,
                 evento.getPrograma().getNombre(),
                 evento.getPeriodo().getNombre());
 
-        List<Matricula> matriculas = matriculaRepo.findByFiltros(
-                null,
-                null,
-                evento.getPrograma().getIdPrograma(),
-                evento.getPeriodo().getIdPeriodo(),
-                null
-        );
+        // 1. Obtener estudiantes matriculados
+        List<Persona> estudiantes = matriculaRepo.findByFiltros(
+                null, null, evento.getPrograma().getIdPrograma(), evento.getPeriodo().getIdPeriodo(), null
+        ).stream().map(Matricula::getPersona).collect(Collectors.toList());
+        log.info("📊 Total estudiantes matriculados: {}", estudiantes.size());
 
-        log.info("📊 Total matriculados en el programa {} del periodo {}: {}",
-                evento.getPrograma().getNombre(),
-                evento.getPeriodo().getNombre(),
-                matriculas.size());
+        // 2. Obtener invitados
+        List<Persona> invitados = personaRepo.findByTipoPersona(TipoPersona.INVITADO);
+        log.info("📊 Total invitados: {}", invitados.size());
 
-        return matriculas.stream().map(m -> {
+        // 3. Combinar listas y eliminar duplicados
+        List<Persona> todosLosPosibles = Stream.concat(estudiantes.stream(), invitados.stream())
+                .distinct()
+                .collect(Collectors.toList());
+        log.info("📊 Total combinado (únicos): {}", todosLosPosibles.size());
+
+        // 4. Filtrar por rol 'INTEGRANTE'
+        List<Persona> soloIntegrantes = todosLosPosibles.stream()
+                .filter(persona -> {
+                    if (persona.getUsuario() == null) return false; // Si no tiene usuario, no puede tener rol
+                    return usuarioRolService.findByUsuarioId(persona.getUsuario().getIdUsuario())
+                            .stream()
+                            .anyMatch(ur -> ur.getRol().getNombre() == Rol.RolNombre.INTEGRANTE);
+                })
+                .collect(Collectors.toList());
+        log.info("✅ Total con rol INTEGRANTE: {}", soloIntegrantes.size());
+
+        // 5. Mapear a DTO y verificar inscripción
+        return soloIntegrantes.stream().map(p -> {
             ParticipanteDisponibleDTO dto = new ParticipanteDisponibleDTO();
-            dto.setPersonaId(m.getPersona().getIdPersona());
-            dto.setNombreCompleto(m.getPersona().getNombreCompleto());
-            dto.setCodigoEstudiante(m.getPersona().getCodigoEstudiante());
-            dto.setDocumento(m.getPersona().getDocumento());
-            dto.setCorreo(m.getPersona().getCorreo());
+            dto.setPersonaId(p.getIdPersona());
+            dto.setNombreCompleto(p.getNombreCompleto());
+            dto.setCodigoEstudiante(p.getCodigoEstudiante());
+            dto.setDocumento(p.getDocumento());
+            dto.setCorreo(p.getCorreo());
 
-            boolean inscrito = participanteRepo.existeEnEvento(
-                    m.getPersona().getIdPersona(),
-                    eventoGeneralId
-            );
+            boolean inscrito = participanteRepo.existeEnEvento(p.getIdPersona(), eventoGeneralId);
             dto.setYaInscrito(inscrito);
-
-            if (inscrito) {
-                log.debug("⚠️ {} ya está inscrito en el evento", m.getPersona().getNombreCompleto());
-            }
 
             return dto;
         }).collect(Collectors.toList());

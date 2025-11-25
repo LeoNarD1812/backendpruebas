@@ -3,6 +3,7 @@ package pe.edu.upeu.sysasistencia.repositorio;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import pe.edu.upeu.sysasistencia.modelo.Persona;
+import pe.edu.upeu.sysasistencia.modelo.TipoPersona;
 import pe.edu.upeu.sysasistencia.modelo.Usuario;
 import java.util.Optional;
 import java.util.List;
@@ -10,9 +11,9 @@ import java.util.List;
 public interface IPersonaRepository extends ICrudGenericoRepository<Persona, Long>{
     Optional<Persona> findByCodigoEstudiante(String codigoEstudiante);
     Optional<Persona> findByDocumento(String documento);
-
+    Optional<Persona> findByCorreo(String correo);
     Optional<Persona> findByUsuarioIdUsuario(Long idUsuario);
-
+    List<Persona> findByTipoPersona(TipoPersona tipoPersona); // Método añadido
 
     @Query(value = """
         SELECT p.* FROM upeu_persona p

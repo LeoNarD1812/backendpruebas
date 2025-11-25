@@ -19,6 +19,8 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -53,32 +55,28 @@ public class AsistenciaServiceImp extends CrudGenericoServiceImp<Asistencia, Lon
         return repo.findByPersonaIdPersona(personaId);
     }
 
-    /**
-     * ✅ INTEGRANTE: Registrar asistencia escaneando QR
-     * VALIDA FECHA DE LA SESIÓN
-     */
     @Override
     public Asistencia registrarAsistencia(AsistenciaRegistroDTO dto) {
         log.info("📱 QR: Registrando asistencia - Sesión={}, Persona={}",
                 dto.getEventoEspecificoId(), dto.getPersonaId());
 
-        // 1. Validar sesión
         EventoEspecifico evento = eventoRepo.findById(dto.getEventoEspecificoId())
                 .orElseThrow(() -> new RuntimeException("Sesión no encontrada"));
 
-        // 2. ✅ VALIDAR FECHA: Solo se puede registrar el día de la sesión
-        LocalDate hoy = LocalDate.now();
-        if (!evento.getFecha().equals(hoy)) {
+        // Usar ZonedDateTime para validaciones de tiempo consistentes
+        ZoneId serverZone = ZoneId.systemDefault();
+        ZonedDateTime ahora = ZonedDateTime.now(serverZone);
+        ZonedDateTime fechaSesion = evento.getFecha().atStartOfDay(serverZone);
+
+        if (!ahora.toLocalDate().equals(fechaSesion.toLocalDate())) {
             throw new RuntimeException(
                     "Esta sesión es para el " + evento.getFecha() +
                             ". No puedes registrar asistencia fuera de fecha"
             );
         }
 
-        // 3. ✅ VALIDAR HORARIO: No permitir antes de 30 min previos ni después de 2 horas
-        LocalTime ahora = LocalTime.now();
-        LocalTime ventanaInicio = evento.getHoraInicio().minusMinutes(30);
-        LocalTime ventanaFin = evento.getHoraFin().plusMinutes(10);
+        ZonedDateTime ventanaInicio = evento.getHoraInicio().atDate(evento.getFecha()).atZone(serverZone).minusMinutes(30);
+        ZonedDateTime ventanaFin = evento.getHoraFin().atDate(evento.getFecha()).atZone(serverZone).plusMinutes(10);
 
         if (ahora.isBefore(ventanaInicio)) {
             throw new RuntimeException(
@@ -92,10 +90,8 @@ public class AsistenciaServiceImp extends CrudGenericoServiceImp<Asistencia, Lon
             );
         }
 
-        // 4. Validar persona
         Persona persona = personaService.findById(dto.getPersonaId());
 
-        // 5. Validar pertenencia al evento
         Long eventoGeneralId = evento.getEventoGeneral().getIdEventoGeneral();
         boolean perteneceAlEvento = participanteRepo.existeEnEvento(
                 dto.getPersonaId(),
@@ -108,7 +104,6 @@ public class AsistenciaServiceImp extends CrudGenericoServiceImp<Asistencia, Lon
             );
         }
 
-        // 6. Verificar duplicado
         var existente = repo.findByEventoEspecificoIdEventoEspecificoAndPersonaIdPersona(
                 dto.getEventoEspecificoId(), dto.getPersonaId()
         );
@@ -120,22 +115,17 @@ public class AsistenciaServiceImp extends CrudGenericoServiceImp<Asistencia, Lon
             );
         }
 
-        // 7. Calcular estado según hora
-        LocalTime horaLimite = evento.getHoraInicio()
-                .plusMinutes(evento.getToleranciaMinutos());
+        ZonedDateTime horaLimite = evento.getHoraInicio()
+                .plusMinutes(evento.getToleranciaMinutos()).atDate(evento.getFecha()).atZone(serverZone);
 
-        Asistencia.EstadoAsistencia estado;
-        if (ahora.isBefore(horaLimite) || ahora.equals(horaLimite)) {
-            estado = Asistencia.EstadoAsistencia.PRESENTE;
-        } else {
-            estado = Asistencia.EstadoAsistencia.TARDE;
-        }
+        Asistencia.EstadoAsistencia estado = ahora.isBefore(horaLimite) || ahora.isEqual(horaLimite)
+                ? Asistencia.EstadoAsistencia.PRESENTE
+                : Asistencia.EstadoAsistencia.TARDE;
 
-        // 8. Crear asistencia
         Asistencia asistencia = Asistencia.builder()
                 .eventoEspecifico(evento)
                 .persona(persona)
-                .fechaHoraRegistro(LocalDateTime.now())
+                .fechaHoraRegistro(ahora.toLocalDateTime())
                 .estado(estado)
                 .observacion(dto.getObservacion())
                 .latitud(dto.getLatitud())
@@ -145,24 +135,18 @@ public class AsistenciaServiceImp extends CrudGenericoServiceImp<Asistencia, Lon
         Asistencia guardada = repo.save(asistencia);
 
         log.info("✅ Asistencia QR registrada: {} - Estado: {} - Hora: {}",
-                persona.getNombreCompleto(), estado, ahora);
+                persona.getNombreCompleto(), estado, ahora.toLocalTime());
 
         return guardada;
     }
 
-    /**
-     * ✅ LÍDER: Generar QR para una sesión
-     * Retorna imagen Base64 del QR y registra la asistencia del líder
-     */
     public QRResponseDTO generarQRParaSesion(Long eventoEspecificoId, Long liderId) {
         log.info("🔲 Generando QR para sesión {} - Líder {}",
                 eventoEspecificoId, liderId);
 
-        // 1. Validar sesión
         EventoEspecifico evento = eventoRepo.findById(eventoEspecificoId)
                 .orElseThrow(() -> new RuntimeException("Sesión no encontrada"));
 
-        // 2. Validar que el líder tiene grupos en este evento
         Long eventoGeneralId = evento.getEventoGeneral().getIdEventoGeneral();
 
         boolean tieneGrupos = grupoPequenoRepo
@@ -177,7 +161,6 @@ public class AsistenciaServiceImp extends CrudGenericoServiceImp<Asistencia, Lon
             );
         }
 
-        // --- INICIO: REGISTRO AUTOMÁTICO DE ASISTENCIA DEL LÍDER ---
         try {
             var existente = repo.findByEventoEspecificoIdEventoEspecificoAndPersonaIdPersona(eventoEspecificoId, liderId);
             if (existente.isEmpty()) {
@@ -194,11 +177,13 @@ public class AsistenciaServiceImp extends CrudGenericoServiceImp<Asistencia, Lon
             }
         } catch (Exception e) {
             log.error("❌ Error al registrar asistencia automática del líder: {}", e.getMessage());
-            // No se lanza excepción para no interrumpir la generación del QR
         }
-        // --- FIN: REGISTRO AUTOMÁTICO DE ASISTENCIA DEL LÍDER ---
 
-        // 3. Crear datos del QR
+        // --- INICIO: LÓGICA DE ZONA HORARIA ---
+        ZoneId serverZone = ZoneId.systemDefault();
+        ZonedDateTime horaFinConZona = evento.getHoraFin().atDate(evento.getFecha()).atZone(serverZone);
+        // --- FIN: LÓGICA DE ZONA HORARIA ---
+
         QRAsistenciaDTO qrData = new QRAsistenciaDTO();
         qrData.setEventoEspecificoId(eventoEspecificoId);
         qrData.setEventoNombre(evento.getEventoGeneral().getNombre());
@@ -209,15 +194,12 @@ public class AsistenciaServiceImp extends CrudGenericoServiceImp<Asistencia, Lon
         qrData.setToleranciaMinutos(evento.getToleranciaMinutos());
         qrData.setLugar(evento.getLugar());
         qrData.setTimestamp(System.currentTimeMillis());
+        qrData.setHoraFinISO(horaFinConZona); // AÑADIDO
 
         try {
-            // 4. Convertir a JSON
             String jsonData = objectMapper.writeValueAsString(qrData);
-
-            // 5. Generar imagen QR en Base64
             String qrBase64 = qrCodeService.generarQRBase64(jsonData);
 
-            // 6. Crear respuesta
             QRResponseDTO response = new QRResponseDTO();
             response.setQrImageBase64(qrBase64);
             response.setQrData(qrData);
@@ -234,9 +216,6 @@ public class AsistenciaServiceImp extends CrudGenericoServiceImp<Asistencia, Lon
         }
     }
 
-    /**
-     * ✅ LÍDER: Obtener lista de participantes para llamado
-     */
     public List<ParticipanteAsistenciaDTO> obtenerListaParaLlamado(
             Long eventoEspecificoId,
             Long liderId
@@ -249,7 +228,6 @@ public class AsistenciaServiceImp extends CrudGenericoServiceImp<Asistencia, Lon
 
         Long eventoGeneralId = evento.getEventoGeneral().getIdEventoGeneral();
 
-        // Obtener grupos del líder en este evento
         List<GrupoPequeno> gruposDelLider = grupoPequenoRepo
                 .findByLiderIdPersona(liderId)
                 .stream()
@@ -307,9 +285,6 @@ public class AsistenciaServiceImp extends CrudGenericoServiceImp<Asistencia, Lon
         return lista;
     }
 
-    /**
-     * ✅ LÍDER: Marcar asistencia manualmente
-     */
     public Asistencia marcarAsistenciaPorLider(
             Long eventoEspecificoId,
             Long personaId,
@@ -325,7 +300,6 @@ public class AsistenciaServiceImp extends CrudGenericoServiceImp<Asistencia, Lon
 
         Long eventoGeneralId = evento.getEventoGeneral().getIdEventoGeneral();
 
-        // Validar permiso
         List<GrupoPequeno> gruposDelLider = grupoPequenoRepo
                 .findByLiderIdPersona(liderId)
                 .stream()
@@ -346,7 +320,6 @@ public class AsistenciaServiceImp extends CrudGenericoServiceImp<Asistencia, Lon
             );
         }
 
-        // Buscar o crear asistencia
         var existente = repo.findByEventoEspecificoIdEventoEspecificoAndPersonaIdPersona(
                 eventoEspecificoId, personaId
         );
@@ -404,10 +377,9 @@ public class AsistenciaServiceImp extends CrudGenericoServiceImp<Asistencia, Lon
         }).collect(Collectors.toList());
     }
 
-    // DTO para respuesta de QR
     @lombok.Data
     public static class QRResponseDTO {
-        private String qrImageBase64; // "data:image/png;base64,..."
+        private String qrImageBase64;
         private QRAsistenciaDTO qrData;
         private String mensaje;
     }

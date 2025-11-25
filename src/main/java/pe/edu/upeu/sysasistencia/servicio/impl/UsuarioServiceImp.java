@@ -34,7 +34,7 @@ public class UsuarioServiceImp extends CrudGenericoServiceImp<Usuario, Long> imp
     private final PasswordEncoder passwordEncoder;
     private final UsuarioMapper userMapper;
     private final IRolRepository rolRepository;
-    private final IMatriculaRepository matriculaRepository; // Inyectado
+    private final IMatriculaRepository matriculaRepository;
 
     @Override
     protected ICrudGenericoRepository<Usuario, Long> getRepo() {
@@ -104,8 +104,46 @@ public class UsuarioServiceImp extends CrudGenericoServiceImp<Usuario, Long> imp
 
     @Override
     public UsuarioDTO register(UsuarioDTO.UsuarioCrearDto userDto) {
-        // ... (código de registro sin cambios)
-        return null; // Simplificado para el ejemplo
+        Optional<Usuario> optionalUser = repo.findOneByUser(userDto.user());
+        if (optionalUser.isPresent()) {
+            throw new ModelNotFoundException("El usuario '" + userDto.user() + "' ya existe", HttpStatus.BAD_REQUEST);
+        }
+        Optional<Persona> personaConCorreo = personaRepository.findByCorreo(userDto.correo());
+        if (personaConCorreo.isPresent()) {
+            throw new ModelNotFoundException("El correo '" + userDto.correo() + "' ya está registrado", HttpStatus.BAD_REQUEST);
+        }
+        Optional<Persona> personaExistente = personaRepository.findByDocumento(userDto.documento());
+        if (personaExistente.isPresent()) {
+            throw new ModelNotFoundException("El documento '" + userDto.documento() + "' ya está registrado", HttpStatus.BAD_REQUEST);
+        }
+        Usuario user = Usuario.builder()
+                .user(userDto.user())
+                .clave(passwordEncoder.encode(userDto.clave()))
+                .estado(userDto.estado() != null ? userDto.estado() : "ACTIVO")
+                .build();
+        Usuario savedUser = repo.save(user);
+        log.info("✅ Usuario creado: {}", savedUser.getUser());
+        String rolNombre = userDto.rol() != null ? userDto.rol() : "INTEGRANTE";
+        Rol rol = obtenerRolPorNombre(rolNombre);
+        if (rol == null) {
+            throw new ModelNotFoundException("Rol no encontrado: " + rolNombre, HttpStatus.BAD_REQUEST);
+        }
+        iurService.save(UsuarioRol.builder()
+                .usuario(savedUser)
+                .rol(rol)
+                .build());
+        log.info("✅ Rol asignado: {}", rol.getNombre());
+        Persona persona = Persona.builder()
+                .nombreCompleto(userDto.nombreCompleto())
+                .documento(userDto.documento())
+                .correo(userDto.correo())
+                .tipoPersona(userDto.tipoPersona() != null ? userDto.tipoPersona() : TipoPersona.INVITADO)
+                .usuario(savedUser)
+                .build();
+        personaRepository.save(persona);
+        log.info("✅ Persona creada: {} - Correo: {} - Documento: {}",
+                persona.getNombreCompleto(), persona.getCorreo(), persona.getDocumento());
+        return mapToUsuarioDTO(savedUser);
     }
 
     @Override
@@ -115,73 +153,36 @@ public class UsuarioServiceImp extends CrudGenericoServiceImp<Usuario, Long> imp
 
     @Override
     public UsuarioDTO updateUserAndRole(Long id, UsuarioDTO dto) {
-        // 1. LOG DE DIAGNÓSTICO: ¿Qué datos están llegando del Frontend?
-        System.out.println("--- INICIO ACTUALIZACIÓN DE USUARIO ---");
-        System.out.println("ID a editar: " + id);
-        System.out.println("Datos llegando del DTO:");
-        System.out.println(" - User: " + dto.getUser());
-        System.out.println(" - Nombre Completo: " + dto.getNombreCompleto());
-        System.out.println(" - Documento: " + dto.getDocumento());
-        System.out.println(" - Rol: " + dto.getNombreRol());
-
-        // 2. Buscar y actualizar Usuario (Credenciales)
         Usuario usuarioExistente = repo.findById(id)
                 .orElseThrow(() -> new ModelNotFoundException("Usuario no encontrado con ID: " + id));
 
-        // Solo actualizamos si el dato no es nulo/vacío
-        if(dto.getUser() != null && !dto.getUser().isEmpty()) {
-            usuarioExistente.setUser(dto.getUser());
-        }
-
-        if (dto.getEstado() != null) {
-            usuarioExistente.setEstado(dto.getEstado());
-        }
-
+        usuarioExistente.setUser(dto.getUser());
+        usuarioExistente.setEstado(dto.getEstado());
         if (dto.getClave() != null && !dto.getClave().isEmpty()) {
             usuarioExistente.setClave(passwordEncoder.encode(dto.getClave()));
         }
         Usuario updatedUsuario = repo.save(usuarioExistente);
-        System.out.println("✅ Usuario (Login) actualizado correctamente.");
 
-        // 3. Buscar y actualizar Persona (Datos personales)
-        // Usamos Optional para ver si existe la relación
-        Optional<Persona> personaOpt = personaRepository.findByUsuarioIdUsuario(id);
-
-        if (personaOpt.isPresent()) {
-            Persona personaExistente = personaOpt.get();
-            System.out.println("✅ Persona encontrada: " + personaExistente.getIdPersona());
-
-            // Actualización segura (Solo si el DTO trae datos)
-            if(dto.getNombreCompleto() != null) personaExistente.setNombreCompleto(dto.getNombreCompleto());
-            if(dto.getDocumento() != null) personaExistente.setDocumento(dto.getDocumento());
-            if(dto.getCorreo() != null) personaExistente.setCorreo(dto.getCorreo());
-            if (dto.getTipoPersona() != null) personaExistente.setTipoPersona(dto.getTipoPersona());
-
-            personaRepository.save(personaExistente);
-            System.out.println("✅ Datos personales guardados en BD.");
-        } else {
-            System.err.println("❌ ERROR CRÍTICO: No se encontró una Persona vinculada al Usuario ID " + id);
-            System.err.println("El usuario se actualizó, pero su nombre/documento NO, porque la tabla 'persona' no tiene registro para este usuario.");
-        }
-
-        // 4. Actualizar Rol
-        if (dto.getNombreRol() != null && !dto.getNombreRol().isEmpty()) {
-            try {
-                Rol nuevoRol = rolRepository.findByNombre(Rol.RolNombre.valueOf(dto.getNombreRol().toUpperCase()))
-                        .orElseThrow(() -> new ModelNotFoundException("Rol no encontrado", HttpStatus.BAD_REQUEST));
-
-                // Limpiamos roles anteriores y ponemos el nuevo
-                List<UsuarioRol> rolesActuales = iurService.findByUsuarioId(id);
-                rolesActuales.forEach(iurService::delete);
-
-                iurService.save(UsuarioRol.builder()
-                        .usuario(updatedUsuario)
-                        .rol(nuevoRol)
-                        .build());
-                System.out.println("✅ Rol actualizado a: " + nuevoRol.getNombre());
-            } catch (Exception e) {
-                System.err.println("❌ Error al actualizar el rol: " + e.getMessage());
+        personaRepository.findByUsuarioIdUsuario(id).ifPresentOrElse(personaExistente -> {
+            personaExistente.setNombreCompleto(dto.getNombreCompleto());
+            personaExistente.setDocumento(dto.getDocumento());
+            personaExistente.setCorreo(dto.getCorreo());
+            if (dto.getTipoPersona() != null) {
+                personaExistente.setTipoPersona(dto.getTipoPersona());
             }
+            personaRepository.save(personaExistente);
+        }, () -> log.warn("No se encontró Persona asociada al Usuario con ID: {}", id));
+
+        if (dto.getNombreRol() != null && !dto.getNombreRol().isEmpty()) {
+            Rol nuevoRol = rolRepository.findByNombre(Rol.RolNombre.valueOf(dto.getNombreRol().toUpperCase()))
+                    .orElseThrow(() -> new ModelNotFoundException("Rol no encontrado: " + dto.getNombreRol(), HttpStatus.BAD_REQUEST));
+
+            iurService.findByUsuarioId(id).forEach(iurService::delete);
+            iurService.save(UsuarioRol.builder()
+                    .usuario(updatedUsuario)
+                    .rol(nuevoRol)
+                    .build());
+            log.info("✅ Rol '{}' asignado al usuario '{}'", nuevoRol.getNombre().name(), updatedUsuario.getUser());
         }
 
         return mapToUsuarioDTO(updatedUsuario);
@@ -189,20 +190,37 @@ public class UsuarioServiceImp extends CrudGenericoServiceImp<Usuario, Long> imp
 
     @Override
     public CustomResponse delete(Long id) {
-        // ... (código de eliminación sin cambios)
-        return null; // Simplificado para el ejemplo
+        Usuario usuario = repo.findById(id)
+                .orElseThrow(() -> new ModelNotFoundException("Usuario no encontrado con ID: " + id));
+
+        personaRepository.findByUsuarioIdUsuario(id).ifPresent(persona -> {
+            personaRepository.delete(persona);
+            log.info("✅ Persona con ID {} eliminada para el usuario {}", persona.getIdPersona(), usuario.getUser());
+        });
+
+        iurService.findByUsuarioId(id).forEach(iurService::delete);
+        log.info("✅ Roles eliminados para el usuario {}", usuario.getUser());
+
+        repo.delete(usuario);
+        log.info("✅ Usuario {} con ID {} eliminado", usuario.getUser(), id);
+
+        return new CustomResponse(200, LocalDateTime.now(), "true", "Usuario eliminado correctamente");
     }
 
     private Rol obtenerRolPorNombre(String rolNombre) {
-        // ... (código sin cambios)
-        return null; // Simplificado para el ejemplo
+        return switch (rolNombre.toUpperCase()) {
+            case "SUPERADMIN" -> rolService.getByNombre(Rol.RolNombre.SUPERADMIN).orElse(null);
+            case "ADMIN" -> rolService.getByNombre(Rol.RolNombre.ADMIN).orElse(null);
+            case "LIDER" -> rolService.getByNombre(Rol.RolNombre.LIDER).orElse(null);
+            case "INTEGRANTE" -> rolService.getByNombre(Rol.RolNombre.INTEGRANTE).orElse(null);
+            default -> null;
+        };
     }
 
     @Override
     public UsuarioDTO mapToUsuarioDTO(Usuario usuario) {
         UsuarioDTO dto = userMapper.toDTO(usuario);
 
-        // Rellenar información de Persona
         personaRepository.findByUsuarioIdUsuario(usuario.getIdUsuario()).ifPresent(persona -> {
             dto.setPersonaId(persona.getIdPersona());
             dto.setNombreCompleto(persona.getNombreCompleto());
@@ -211,22 +229,14 @@ public class UsuarioServiceImp extends CrudGenericoServiceImp<Usuario, Long> imp
             dto.setTipoPersona(persona.getTipoPersona());
             dto.setCodigoEstudiante(persona.getCodigoEstudiante());
 
-            // --- LÓGICA CORREGIDA (ANTI-ERRORES 500) ---
-            List<Matricula> matriculas = matriculaRepository.findByPersonaIdPersona(persona.getIdPersona());
-
-            if (matriculas != null && !matriculas.isEmpty()) {
-                matriculas.stream()
-                        // 1. IMPORTANTE: Filtramos para evitar NullPointerException si faltan datos
-                        .filter(m -> m.getPeriodo() != null && m.getPeriodo().getFechaInicio() != null)
-                        // 2. Ahora sí es seguro comparar
-                        .max(Comparator.comparing(m -> m.getPeriodo().getFechaInicio()))
-                        .ifPresent(matriculaMasReciente -> {
-                            dto.setPeriodo(matriculaMasReciente.getPeriodo().getNombre());
-                        });
-            }
+            matriculaRepository.findByPersonaIdPersona(persona.getIdPersona())
+                    .stream()
+                    .max(Comparator.comparing(m -> m.getPeriodo().getFechaInicio()))
+                    .ifPresent(matriculaMasReciente -> {
+                        dto.setPeriodo(matriculaMasReciente.getPeriodo().getNombre());
+                    });
         });
 
-        // Rellenar información de Rol
         iurService.findByUsuarioId(usuario.getIdUsuario()).stream().findFirst().ifPresent(usuarioRol -> {
             dto.setNombreRol(usuarioRol.getRol().getNombre().name());
         });
