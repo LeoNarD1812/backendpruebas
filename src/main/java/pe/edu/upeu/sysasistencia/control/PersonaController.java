@@ -61,6 +61,15 @@ public class PersonaController {
         return ResponseEntity.ok(personaMapper.toDTO(persona));
     }
 
+    @GetMapping("/lideres")
+    public ResponseEntity<List<PersonaDTO>> findLideresByFacultadAndPrograma(
+            @RequestParam Long facultadId,
+            @RequestParam Long programaId,
+            @RequestParam(required = false) Long excludeGrupoId) {
+        List<Persona> lideres = personaService.findLideresByFacultadAndPrograma(facultadId, programaId, excludeGrupoId);
+        return ResponseEntity.ok(personaMapper.toDTOs(lideres));
+    }
+
     @PostMapping
     public ResponseEntity<PersonaDTO> save(@RequestBody PersonaDTO dto) {
         Persona obj = personaService.save(personaMapper.toEntity(dto));

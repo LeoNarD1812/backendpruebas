@@ -35,6 +35,7 @@ public class UsuarioServiceImp extends CrudGenericoServiceImp<Usuario, Long> imp
     private final UsuarioMapper userMapper;
     private final IRolRepository rolRepository;
     private final IMatriculaRepository matriculaRepository;
+    private final IPeriodoRepository periodoRepository;
 
     @Override
     protected ICrudGenericoRepository<Usuario, Long> getRepo() {
@@ -167,9 +168,20 @@ public class UsuarioServiceImp extends CrudGenericoServiceImp<Usuario, Long> imp
             personaExistente.setNombreCompleto(dto.getNombreCompleto());
             personaExistente.setDocumento(dto.getDocumento());
             personaExistente.setCorreo(dto.getCorreo());
-            if (dto.getTipoPersona() != null) {
-                personaExistente.setTipoPersona(dto.getTipoPersona());
+
+            // Lógica para determinar el tipo de persona
+            Periodo periodoActivo = periodoRepository.findByEstado("ACTIVO").stream().findFirst().orElse(null);
+            boolean esEstudiante = false;
+            if (periodoActivo != null) {
+                esEstudiante = matriculaRepository.existsByPersonaIdPersonaAndPeriodoIdPeriodo(personaExistente.getIdPersona(), periodoActivo.getIdPeriodo());
             }
+
+            if (esEstudiante) {
+                personaExistente.setTipoPersona(TipoPersona.ESTUDIANTE);
+            } else {
+                personaExistente.setTipoPersona(TipoPersona.INVITADO);
+            }
+
             personaRepository.save(personaExistente);
         }, () -> log.warn("No se encontró Persona asociada al Usuario con ID: {}", id));
 

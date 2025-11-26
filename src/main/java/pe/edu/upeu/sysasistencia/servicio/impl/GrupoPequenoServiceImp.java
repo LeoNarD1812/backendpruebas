@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.edu.upeu.sysasistencia.dtos.GrupoPequenoDTO;
+import pe.edu.upeu.sysasistencia.dtos.LiderDisponibleDTO;
 import pe.edu.upeu.sysasistencia.dtos.ParticipanteDisponibleDTO;
 import pe.edu.upeu.sysasistencia.excepciones.CustomResponse;
 import pe.edu.upeu.sysasistencia.mappers.GrupoPequenoMapper;
@@ -33,6 +34,7 @@ public class GrupoPequenoServiceImp extends CrudGenericoServiceImp<GrupoPequeno,
     private final GrupoPequenoMapper grupoPequenoMapper;
     private final IPersonaRepository personaRepo;
     private final IUsuarioRolService usuarioRolService; // Inyectado
+    private final IEventoGeneralRepository eventoGeneralRepo;
 
     @Override
     protected ICrudGenericoRepository<GrupoPequeno, Long> getRepo() {
@@ -123,5 +125,27 @@ public class GrupoPequenoServiceImp extends CrudGenericoServiceImp<GrupoPequeno,
 
             return dto;
         }).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<LiderDisponibleDTO> getLideresDisponibles(Long eventoGeneralId, Long excludeGrupoId) {
+        EventoGeneral evento = eventoGeneralRepo.findById(eventoGeneralId)
+                .orElseThrow(() -> new RuntimeException("Evento no encontrado"));
+
+        List<Persona> lideres = personaRepo.findLideresByFacultadAndPrograma(
+                evento.getPrograma().getFacultad().getIdFacultad(),
+                evento.getPrograma().getIdPrograma(),
+                excludeGrupoId
+        );
+
+        return lideres.stream()
+                .map(p -> new LiderDisponibleDTO(
+                        p.getIdPersona(),
+                        p.getNombreCompleto(),
+                        p.getCodigoEstudiante(),
+                        p.getCorreo(),
+                        p.getCelular()
+                ))
+                .collect(Collectors.toList());
     }
 }

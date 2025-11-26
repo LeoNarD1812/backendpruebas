@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pe.edu.upeu.sysasistencia.dtos.GrupoPequenoDTO;
+import pe.edu.upeu.sysasistencia.dtos.LiderDisponibleDTO;
 import pe.edu.upeu.sysasistencia.dtos.ParticipanteDisponibleDTO;
 import pe.edu.upeu.sysasistencia.excepciones.CustomResponse;
 import pe.edu.upeu.sysasistencia.mappers.GrupoPequenoMapper;
@@ -60,6 +61,15 @@ public class GrupoPequenoController {
         return ResponseEntity.ok(list);
     }
 
+    @GetMapping("/lideres-disponibles/{eventoGeneralId}")
+    public ResponseEntity<List<LiderDisponibleDTO>> getLideresDisponibles(
+            @PathVariable Long eventoGeneralId,
+            @RequestParam(required = false) Long excludeGrupoId
+    ) {
+        List<LiderDisponibleDTO> list = grupoService.getLideresDisponibles(eventoGeneralId, excludeGrupoId);
+        return ResponseEntity.ok(list);
+    }
+
     @PostMapping
     public ResponseEntity<GrupoPequenoDTO> save(@RequestBody GrupoPequenoDTO dto) {
         GrupoPequeno obj = grupoService.save(grupoMapper.toEntity(dto));
@@ -75,6 +85,8 @@ public class GrupoPequenoController {
         GrupoPequeno obj = grupoService.update(id, grupoMapper.toEntity(dto));
         return ResponseEntity.ok(grupoMapper.toDTO(obj));
     }
+
+
 
     @DeleteMapping("/{id}")
     public ResponseEntity<CustomResponse> delete(@PathVariable Long id) {

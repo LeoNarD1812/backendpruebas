@@ -13,6 +13,8 @@ public interface IMatriculaRepository extends ICrudGenericoRepository<Matricula,
 
     Optional<Matricula> findByPersonaIdPersonaAndPeriodoIdPeriodo(Long personaId, Long periodoId);
 
+    boolean existsByPersonaIdPersonaAndPeriodoIdPeriodo(Long personaId, Long periodoId);
+
     @Query("SELECT m FROM Matricula m WHERE m.persona.codigoEstudiante = :codigo")
     List<Matricula> findByCodigoEstudiante(@Param("codigo") String codigo);
 

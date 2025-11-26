@@ -53,6 +53,7 @@ public class WebSecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/accesos/menu", "/accesos/menu-movil").permitAll() // Para la web y móvil
                         .requestMatchers(HttpMethod.GET, "/periodos").permitAll() // Permitir acceso a /periodos
                         .requestMatchers(HttpMethod.GET, "/periodos/**").permitAll() // Permitir acceso a /periodos/{id}
+                        .requestMatchers(HttpMethod.GET, "/grupos-pequenos/lideres-disponibles/**").authenticated()
                         .requestMatchers("/mail/**", "/doc/**", "/v3/**","/swagger-ui/**", "/swagger-ui.html").permitAll()
 
                         .requestMatchers(HttpMethod.PUT, "/personas/**").authenticated()

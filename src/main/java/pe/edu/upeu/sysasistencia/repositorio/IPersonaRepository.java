@@ -27,4 +27,26 @@ public interface IPersonaRepository extends ICrudGenericoRepository<Persona, Lon
         )
     """, nativeQuery = true)
     List<Persona> findLideresDisponibles(@Param("excludeGrupoId") Long excludeGrupoId);
+
+    @Query(value = """
+        SELECT p.* FROM upeu_persona p
+        JOIN upeu_matricula m ON p.id_persona = m.persona_id
+        JOIN upeu_programa_estudio pe ON m.programa_id = pe.id_programa
+        JOIN upeu_facultad f ON pe.facultad_id = f.id_facultad
+        JOIN upeu_usuario u ON p.usuario_id = u.id_usuario
+        JOIN upeu_usuario_rol ur ON u.id_usuario = ur.usuario_id
+        JOIN upeu_roles r ON ur.rol_id = r.id_rol
+        WHERE r.nombre = 'LIDER'
+        AND f.id_facultad = :facultadId
+        AND pe.id_programa = :programaId
+        AND p.id_persona NOT IN (
+            SELECT gp.lider_id FROM upeu_grupo_pequeno gp
+            WHERE (:excludeGrupoId IS NULL OR gp.id_grupo_pequeno != :excludeGrupoId)
+        )
+    """, nativeQuery = true)
+    List<Persona> findLideresByFacultadAndPrograma(
+            @Param("facultadId") Long facultadId,
+            @Param("programaId") Long programaId,
+            @Param("excludeGrupoId") Long excludeGrupoId
+    );
 }
