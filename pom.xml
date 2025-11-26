@@ -12,6 +12,7 @@
     <groupId>pe.edu.upeu</groupId>
     <artifactId>SysAsistencia</artifactId>
     <version>0.0.1-SNAPSHOT</version>
+    <packaging>war</packaging>
     <name>SysAsistencia</name>
     <description>SysAsistencia</description>
     <url/>
@@ -232,6 +233,7 @@
                             <artifactId>lombok</artifactId>
                         </exclude>
                     </excludes>
+                    <finalName>SysAsistencia</finalName>
                 </configuration>
             </plugin>
         </plugins>

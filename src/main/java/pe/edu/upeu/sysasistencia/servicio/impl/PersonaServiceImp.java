@@ -28,12 +28,17 @@ public class PersonaServiceImp extends CrudGenericoServiceImp<Persona, Long> imp
         Persona personaDB = repo.findById(id)
                 .orElseThrow(() -> new ModelNotFoundException("Persona no encontrada con ID: " + id));
 
+        // Actualizar todos los campos
         personaDB.setNombreCompleto(persona.getNombreCompleto());
         personaDB.setDocumento(persona.getDocumento());
         personaDB.setCorreo(persona.getCorreo());
         personaDB.setCelular(persona.getCelular());
         personaDB.setTipoPersona(persona.getTipoPersona());
         personaDB.setCodigoEstudiante(persona.getCodigoEstudiante());
+        personaDB.setCorreoInstitucional(persona.getCorreoInstitucional());
+        personaDB.setPais(persona.getPais());
+        personaDB.setReligion(persona.getReligion());
+        personaDB.setFechaNacimiento(persona.getFechaNacimiento());
 
         return repo.save(personaDB);
     }
