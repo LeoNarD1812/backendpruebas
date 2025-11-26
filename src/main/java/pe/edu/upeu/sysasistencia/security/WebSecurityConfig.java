@@ -24,7 +24,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @RequiredArgsConstructor
 public class WebSecurityConfig {
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
-    private final JwtAccessDeniedHandler jwtAccessDeniedHandler; // Inyectar el nuevo handler
+    private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
     private final UserDetailsService jwtUserDetailsService;
     private final JwtRequestFilter jwtRequestFilter;
 
@@ -49,23 +49,42 @@ public class WebSecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(req -> req
-                        .requestMatchers(HttpMethod.POST, "/users/login", "/users/register").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/accesos/menu", "/accesos/menu-movil").permitAll() // Para la web y móvil
-                        .requestMatchers(HttpMethod.GET, "/periodos").permitAll() // Permitir acceso a /periodos
-                        .requestMatchers(HttpMethod.GET, "/periodos/**").permitAll() // Permitir acceso a /periodos/{id}
-                        .requestMatchers(HttpMethod.GET, "/grupos-pequenos/lideres-disponibles/**").authenticated()
-                        .requestMatchers("/mail/**", "/doc/**", "/v3/**","/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        // RUTAS PÚBLICAS
+                        .requestMatchers(
+                                "/users/login", "/users/register",
+                                "/accesos/menu", "/accesos/menu-movil",
+                                "/mail/**", "/doc/**", "/v3/**","/swagger-ui/**", "/swagger-ui.html"
+                        ).permitAll()
 
-                        .requestMatchers(HttpMethod.PUT, "/personas/**").authenticated()
-                        // REVERTIDO: Eliminado el permitAll temporal para /personas/my-profile GET
-                        .requestMatchers("/matriculas/importar", "/matriculas/exportar").authenticated()
+                        // RUTAS DE GESTIÓN (ADMIN / SUPERADMIN)
+                        .requestMatchers(
+                                "/sedes/**", "/facultades/**", "/programas/**", "/periodos/**",
+                                "/matriculas/**", "/users/**", "/roles/**",
+                                "/eventos-generales/**", "/grupos-generales/**", "/grupos-pequenos/**"
+                        ).hasAnyRole("ADMIN", "SUPERADMIN")
 
-                        .anyRequest().authenticated() // Todas las demás solicitudes requieren autenticación
+                        // RUTAS DE LÍDER
+                        .requestMatchers("/asistencias/qr/**", "/asistencias/lista-llamado/**",
+                                "/grupos-pequenos/lider","/participantes")
+                        .hasAnyRole("LIDER", "ADMIN", "SUPERADMIN")
+
+                        // RUTAS DE INTEGRANTE
+                        .requestMatchers(HttpMethod.POST, "/asistencias/registrar")
+                        .hasAnyRole("INTEGRANTE", "LIDER", "ADMIN", "SUPERADMIN")
+
+                        // RUTAS COMUNES AUTENTICADAS
+                        .requestMatchers(
+                                "/personas/my-profile",
+                                "/asistencias/persona/**"
+                        ).authenticated()
+
+                        // CUALQUIER OTRA RUTA
+                        .anyRequest().authenticated()
                 )
                 .formLogin(AbstractHttpConfigurer::disable)
                 .exceptionHandling(e -> e
-                        .authenticationEntryPoint(jwtAuthenticationEntryPoint) // Para 401 Unauthorized
-                        .accessDeniedHandler(jwtAccessDeniedHandler) // Para 403 Forbidden
+                        .authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                        .accessDeniedHandler(jwtAccessDeniedHandler)
                 );
 
         http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
