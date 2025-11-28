@@ -40,7 +40,8 @@ public class AccesoServiceImp extends CrudGenericoServiceImp<Acceso, Long> imple
     // Lógica separada para el MÓVIL
     public List<MenuGroup> getMenuMovilByUser(String username) {
         List<Acceso> accesos = getAccesoByUser(username);
-        return estructurarMenuParaMovil(accesos);
+        List<String> roles = usuarioRepository.findRolesByUsername(username); // Añadido para obtener roles
+        return estructurarMenuParaMovil(accesos, roles); // Pasar roles
     }
 
     // Método para la WEB (lógica compleja original)
@@ -59,7 +60,7 @@ public class AccesoServiceImp extends CrudGenericoServiceImp<Acceso, Long> imple
         grupos.put("administracion", new MenuGroup(2L, "Administración", "fa-cog", null, true));
         grupos.put("eventos", new MenuGroup(3L, "Eventos", "fa-calendar-alt", null, true));
         grupos.put("asistencia", new MenuGroup(4L, "Asistencia", "fa-user-check", null, false));
-        
+
         if (roles.contains("LIDER") || roles.contains("INTEGRANTE")) {
             grupos.put("calendario", new MenuGroup(6L, "Calendario", "fa-calendar-alt", "/calendario", false));
         }
@@ -133,8 +134,8 @@ public class AccesoServiceImp extends CrudGenericoServiceImp<Acceso, Long> imple
     }
 
     // Método para el MÓVIL (con el filtro corregido)
-    private List<MenuGroup> estructurarMenuParaMovil(List<Acceso> accesos) {
-        return accesos.stream()
+    private List<MenuGroup> estructurarMenuParaMovil(List<Acceso> accesos, List<String> roles) {
+        List<MenuGroup> menu = accesos.stream()
                 .filter(acceso -> acceso.getUrl() == null || !acceso.getUrl().trim().startsWith("/dashboard"))
                 .map(acceso -> new MenuGroup(
                         acceso.getIdAcceso(),
@@ -144,6 +145,16 @@ public class AccesoServiceImp extends CrudGenericoServiceImp<Acceso, Long> imple
                         false,
                         List.of()
                 ))
-                .collect(Collectors.toList());
+                .collect(Collectors.toCollection(ArrayList::new)); // Convertir a lista mutable
+
+        // Añadir calendario si el rol corresponde
+        if (roles.contains("LIDER") || roles.contains("INTEGRANTE")) {
+            menu.add(new MenuGroup(6L, "Calendario", "fa-calendar-alt", "/calendario", false, List.of()));
+        }
+
+        // Ordenar para consistencia
+        menu.sort(Comparator.comparing(MenuGroup::getId));
+
+        return menu;
     }
 }
