@@ -80,7 +80,7 @@ public class MatriculaServiceImp extends CrudGenericoServiceImp<Matricula, Long>
             Long periodoId,
             TipoPersona tipoPersona
     ) {
-        return repo.findByFiltros(sedeId, facultadId, programaId, periodoId, tipoPersona);
+        return repo.findByFiltros(sedeId, facultadId, programaId, periodoId, tipoPersona, null);
     }
 
     @Override

@@ -10,6 +10,6 @@ public interface IGrupoPequenoService extends ICrudGenericoService<GrupoPequeno,
     List<GrupoPequeno> findByGrupoGeneral(Long grupoGeneralId);
     List<GrupoPequeno> findByLider(Long liderId);
     List<GrupoPequenoDTO> findDtosByLider(Long liderId); // Nuevo método
-    List<ParticipanteDisponibleDTO> getParticipantesDisponibles(Long eventoGeneralId);
+    List<ParticipanteDisponibleDTO> getParticipantesDisponibles(Long eventoGeneralId, String ciclo);
     List<LiderDisponibleDTO> getLideresDisponibles(Long eventoGeneralId, Long excludeGrupoId);
 }

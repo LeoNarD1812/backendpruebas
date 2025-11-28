@@ -61,15 +61,15 @@ public class WebSecurityConfig {
                                 "/sedes/**", "/facultades/**", "/programas/**", "/periodos/**",
                                 "/matriculas/**", "/users/**", "/roles/**",
                                 "/eventos-generales/**", "/grupos-generales/**", "/grupos-pequenos/**"
-                        ).hasAnyRole("ADMIN", "SUPERADMIN")
+                        ).hasAnyRole("ADMIN", "SUPERADMIN","LIDER","INTEGRANTE")
 
                         // RUTAS DE LÍDER
                         .requestMatchers("/asistencias/qr/**", "/asistencias/lista-llamado/**",
-                                "/grupos-pequenos/lider","/participantes")
-                        .hasAnyRole("LIDER", "ADMIN", "SUPERADMIN")
+                                "/grupos-pequenos/lider","/participantes","/grupos-pequenos/lider")
+                        .hasAnyRole("LIDER", "ADMIN", "SUPERADMIN","INTEGRANTE")
 
                         // RUTAS DE INTEGRANTE
-                        .requestMatchers(HttpMethod.POST, "/asistencias/registrar")
+                        .requestMatchers(HttpMethod.POST, "/asistencias/registrar","/eventos-generales")
                         .hasAnyRole("INTEGRANTE", "LIDER", "ADMIN", "SUPERADMIN")
 
                         // RUTAS COMUNES AUTENTICADAS

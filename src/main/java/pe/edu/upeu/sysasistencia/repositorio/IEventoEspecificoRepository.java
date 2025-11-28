@@ -21,4 +21,9 @@ public interface IEventoEspecificoRepository extends ICrudGenericoRepository<Eve
     );
 
     List<EventoEspecifico> findByEstado(EventoEspecifico.EstadoSesion estado);
+
+    @Query("SELECT ee FROM EventoEspecifico ee " +
+           "JOIN ee.eventoGeneral eg " +
+           "WHERE eg.programa.idPrograma = :programaId")
+    List<EventoEspecifico> findByProgramaEstudioId(@Param("programaId") Long programaId);
 }

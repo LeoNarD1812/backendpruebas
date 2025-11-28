@@ -55,9 +55,10 @@ public class GrupoPequenoController {
 
     @GetMapping("/disponibles/{eventoGeneralId}")
     public ResponseEntity<List<ParticipanteDisponibleDTO>> getParticipantesDisponibles(
-            @PathVariable Long eventoGeneralId
+            @PathVariable Long eventoGeneralId,
+            @RequestParam(required = false) String ciclo
     ) {
-        List<ParticipanteDisponibleDTO> list = grupoService.getParticipantesDisponibles(eventoGeneralId);
+        List<ParticipanteDisponibleDTO> list = grupoService.getParticipantesDisponibles(eventoGeneralId, ciclo);
         return ResponseEntity.ok(list);
     }
 

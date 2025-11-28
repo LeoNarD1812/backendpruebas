@@ -27,12 +27,14 @@ public interface IMatriculaRepository extends ICrudGenericoRepository<Matricula,
             "m.facultad.idFacultad = COALESCE(:facultadId, m.facultad.idFacultad) AND " +
             "m.programaEstudio.idPrograma = COALESCE(:programaId, m.programaEstudio.idPrograma) AND " +
             "m.periodo.idPeriodo = COALESCE(:periodoId, m.periodo.idPeriodo) AND " +
-            "m.persona.tipoPersona = COALESCE(:tipoPersona, m.persona.tipoPersona)")
+            "m.persona.tipoPersona = COALESCE(:tipoPersona, m.persona.tipoPersona) AND " +
+            "m.ciclo = COALESCE(:ciclo, m.ciclo)")
     List<Matricula> findByFiltros(
             @Param("sedeId") Long sedeId,
             @Param("facultadId") Long facultadId,
             @Param("programaId") Long programaId,
             @Param("periodoId") Long periodoId,
-            @Param("tipoPersona") TipoPersona tipoPersona
+            @Param("tipoPersona") TipoPersona tipoPersona,
+            @Param("ciclo") String ciclo
     );
 }

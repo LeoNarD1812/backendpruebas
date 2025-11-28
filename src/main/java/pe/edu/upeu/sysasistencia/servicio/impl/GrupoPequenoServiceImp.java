@@ -75,8 +75,8 @@ public class GrupoPequenoServiceImp extends CrudGenericoServiceImp<GrupoPequeno,
     }
 
     @Override
-    public List<ParticipanteDisponibleDTO> getParticipantesDisponibles(Long eventoGeneralId) {
-        log.info("🔍 Buscando participantes disponibles para evento: {}", eventoGeneralId);
+    public List<ParticipanteDisponibleDTO> getParticipantesDisponibles(Long eventoGeneralId, String ciclo) {
+        log.info("🔍 Buscando participantes disponibles para evento: {} y ciclo: {}", eventoGeneralId, ciclo);
 
         EventoGeneral evento = eventoService.findById(eventoGeneralId);
         log.info("📋 Evento: {} - Programa: {} - Periodo: {}",
@@ -86,7 +86,7 @@ public class GrupoPequenoServiceImp extends CrudGenericoServiceImp<GrupoPequeno,
 
         // 1. Obtener estudiantes matriculados
         List<Persona> estudiantes = matriculaRepo.findByFiltros(
-                null, null, evento.getPrograma().getIdPrograma(), evento.getPeriodo().getIdPeriodo(), null
+                null, null, evento.getPrograma().getIdPrograma(), evento.getPeriodo().getIdPeriodo(), null, ciclo
         ).stream().map(Matricula::getPersona).collect(Collectors.toList());
         log.info("📊 Total estudiantes matriculados: {}", estudiantes.size());
 

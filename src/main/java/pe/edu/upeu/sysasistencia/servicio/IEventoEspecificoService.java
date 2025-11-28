@@ -11,4 +11,5 @@ public interface IEventoEspecificoService extends ICrudGenericoService<EventoEsp
     List<EventoEspecifico> findByEventoYRangoFechas(Long eventoId, LocalDate inicio, LocalDate fin);
     List<EventoEspecifico> createRecurrence(RecurrenceRequestDTO dto);
     EventoEspecifico update(Long id, EventoEspecifico eventoEspecifico);
+    List<EventoEspecifico> findMySesiones();
 }

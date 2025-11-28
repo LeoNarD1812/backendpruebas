@@ -7,6 +7,7 @@ import pe.edu.upeu.sysasistencia.dtos.MenuItem;
 import pe.edu.upeu.sysasistencia.modelo.Acceso;
 import pe.edu.upeu.sysasistencia.repositorio.IAccesoRepository;
 import pe.edu.upeu.sysasistencia.repositorio.ICrudGenericoRepository;
+import pe.edu.upeu.sysasistencia.repositorio.IUsuarioRepository;
 import pe.edu.upeu.sysasistencia.servicio.IAccesoService;
 
 import java.util.*;
@@ -16,6 +17,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AccesoServiceImp extends CrudGenericoServiceImp<Acceso, Long> implements IAccesoService {
     private final IAccesoRepository repo;
+    private final IUsuarioRepository usuarioRepository;
 
     @Override
     protected ICrudGenericoRepository<Acceso, Long> getRepo() {
@@ -31,7 +33,8 @@ public class AccesoServiceImp extends CrudGenericoServiceImp<Acceso, Long> imple
     @Override
     public List<MenuGroup> getMenuByUser(String username) {
         List<Acceso> accesos = getAccesoByUser(username);
-        return estructurarMenuParaWeb(accesos);
+        List<String> roles = usuarioRepository.findRolesByUsername(username);
+        return estructurarMenuParaWeb(accesos, roles);
     }
 
     // Lógica separada para el MÓVIL
@@ -41,13 +44,25 @@ public class AccesoServiceImp extends CrudGenericoServiceImp<Acceso, Long> imple
     }
 
     // Método para la WEB (lógica compleja original)
-    private List<MenuGroup> estructurarMenuParaWeb(List<Acceso> accesos) {
+    private List<MenuGroup> estructurarMenuParaWeb(List<Acceso> accesos, List<String> roles) {
         Map<String, MenuGroup> grupos = new LinkedHashMap<>();
-        grupos.put("dashboard", new MenuGroup(1L, "Dashboard", "fa-tachometer-alt", "/dashboard", true));
+
+        // Dashboard dinámico según el rol
+        if (roles.contains("ADMIN")) {
+            grupos.put("dashboard", new MenuGroup(1L, "Dashboard", "fa-tachometer-alt", "/dashboard/admin", false));
+        } else if (roles.contains("LIDER")) {
+            grupos.put("dashboard", new MenuGroup(1L, "Dashboard", "fa-tachometer-alt", "/dashboard/lider", false));
+        } else if (roles.contains("INTEGRANTE")) {
+            grupos.put("dashboard", new MenuGroup(1L, "Dashboard", "fa-tachometer-alt", "/dashboard/integrante", false));
+        }
+
         grupos.put("administracion", new MenuGroup(2L, "Administración", "fa-cog", null, true));
         grupos.put("eventos", new MenuGroup(3L, "Eventos", "fa-calendar-alt", null, true));
         grupos.put("asistencia", new MenuGroup(4L, "Asistencia", "fa-user-check", null, false));
-        grupos.put("miPerfil", new MenuGroup(5L, "Mi Perfil", "fa-user-circle", null, true));
+        
+        if (roles.contains("LIDER") || roles.contains("INTEGRANTE")) {
+            grupos.put("calendario", new MenuGroup(6L, "Calendario", "fa-calendar-alt", "/calendario", false));
+        }
 
         // Temporary list to hold event-related menu items for sorting
         List<MenuItem> eventosMenuItems = new ArrayList<>();
@@ -57,10 +72,10 @@ public class AccesoServiceImp extends CrudGenericoServiceImp<Acceso, Long> imple
             String nombre = acceso.getNombre();
             String icono = acceso.getIcono();
 
-            if (url.contains("dashboard") || nombre.toLowerCase().contains("dashboard")) {
-                addMenuItem(grupos.get("dashboard"), acceso, nombre, url, icono);
+            if (url.contains("dashboard")) {
+                // Ya no se maneja aquí, se crea dinámicamente arriba
             } else if (url.equals("/personas/my-profile")) {
-                addMenuItem(grupos.get("miPerfil"), acceso, "Editar Perfil", url, icono);
+                grupos.put("miPerfil", new MenuGroup(5L, "Editar Perfil", icono, url, false));
             } else if (url.contains("matriculas") || url.contains("sedes") || url.contains("facultades") || url.contains("programas") || url.contains("usuarios") || url.contains("users")|| url.contains("roles") || url.contains("configuracion") || url.contains("periodos") || nombre.toLowerCase().contains("admin")) {
                 addMenuItem(grupos.get("administracion"), acceso, nombre, url, icono);
             } else if (url.equals("/asistencias/reporte")) {
@@ -74,7 +89,9 @@ public class AccesoServiceImp extends CrudGenericoServiceImp<Acceso, Long> imple
             }
             else {
                 // If not caught by any specific group, add as a top-level item (should be rare for submenu items)
-                grupos.put("item_" + acceso.getIdAcceso(), new MenuGroup(acceso.getIdAcceso(), nombre, icono, url, false));
+                if (!grupos.containsKey("item_" + acceso.getIdAcceso())) {
+                    grupos.put("item_" + acceso.getIdAcceso(), new MenuGroup(acceso.getIdAcceso(), nombre, icono, url, false));
+                }
             }
         }
 
@@ -105,7 +122,7 @@ public class AccesoServiceImp extends CrudGenericoServiceImp<Acceso, Long> imple
     }
 
     private void addMenuItem(MenuGroup grupo, Acceso acceso, String label, String url, String icono) {
-        if (grupo.getPath() == null) { // Only add items if it's a collapsible group
+        if (grupo != null && grupo.getPath() == null) { // Only add items if it's a collapsible group
             grupo.getItems().add(new MenuItem(
                     acceso.getIdAcceso(),
                     label,

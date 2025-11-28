@@ -30,6 +30,12 @@ public class EventoEspecificoController {
         return ResponseEntity.ok(list);
     }
 
+    @GetMapping("/mis-sesiones")
+    public ResponseEntity<List<EventoEspecificoDTO>> findMySesiones() {
+        List<EventoEspecificoDTO> list = eventoMapper.toDTOs(eventoService.findMySesiones());
+        return ResponseEntity.ok(list);
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<EventoEspecificoDTO> findById(@PathVariable Long id) {
         EventoEspecifico obj = eventoService.findById(id);

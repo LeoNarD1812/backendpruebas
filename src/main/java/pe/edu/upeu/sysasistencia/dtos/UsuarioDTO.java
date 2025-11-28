@@ -29,6 +29,7 @@ public class UsuarioDTO {
     private String nombreRol;
     private TipoPersona tipoPersona; // Añadido
     private String periodo; // Asumiremos que es el nombre del periodo actual
+    private String programa; // Añadido
 
     public record CredencialesDto(
             @NotBlank(message = "El usuario es obligatorio") String user,

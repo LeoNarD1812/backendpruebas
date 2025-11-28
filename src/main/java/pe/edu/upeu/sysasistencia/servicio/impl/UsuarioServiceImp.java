@@ -55,7 +55,12 @@ public class UsuarioServiceImp extends CrudGenericoServiceImp<Usuario, Long> imp
 
     @Override
     public List<UsuarioDTO> findAllDTOs() {
+        List<String> rolesToShow = List.of("LIDER", "INTEGRANTE","ADMIN");
         return repo.findAll().stream()
+                .filter(usuario -> {
+                    Optional<UsuarioRol> usuarioRol = iurService.findByUsuarioId(usuario.getIdUsuario()).stream().findFirst();
+                    return usuarioRol.isPresent() && rolesToShow.contains(usuarioRol.get().getRol().getNombre().name());
+                })
                 .map(this::mapToUsuarioDTO)
                 .collect(Collectors.toList());
     }
@@ -246,6 +251,9 @@ public class UsuarioServiceImp extends CrudGenericoServiceImp<Usuario, Long> imp
                     .max(Comparator.comparing(m -> m.getPeriodo().getFechaInicio()))
                     .ifPresent(matriculaMasReciente -> {
                         dto.setPeriodo(matriculaMasReciente.getPeriodo().getNombre());
+                        if (matriculaMasReciente.getProgramaEstudio() != null) {
+                            dto.setPrograma(matriculaMasReciente.getProgramaEstudio().getNombre());
+                        }
                     });
         });
 

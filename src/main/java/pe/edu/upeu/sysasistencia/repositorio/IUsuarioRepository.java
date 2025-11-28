@@ -15,4 +15,11 @@ public interface IUsuarioRepository extends ICrudGenericoRepository<Usuario, Lon
             "WHERE r.nombre = :rolNombre",
             nativeQuery = true)
     List<Usuario> findByRol(@Param("rolNombre") String rolNombre);
+
+    @Query(value = "SELECT r.nombre FROM upeu_roles r " +
+            "JOIN upeu_usuario_rol ur ON r.id_rol = ur.rol_id " +
+            "JOIN upeu_usuario u ON ur.usuario_id = u.id_usuario " +
+            "WHERE u.user = :username",
+            nativeQuery = true)
+    List<String> findRolesByUsername(@Param("username") String username);
 }
